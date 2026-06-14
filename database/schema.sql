@@ -54,6 +54,24 @@ CREATE TABLE IF NOT EXISTS productos (
     CHECK (ml > 0)
 );
 
+CREATE TABLE IF NOT EXISTS movimientos_inventario (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    producto_id INTEGER NOT NULL,
+    tipo_movimiento TEXT NOT NULL,
+    cantidad INTEGER NOT NULL,
+    stock_anterior INTEGER NOT NULL,
+    stock_nuevo INTEGER NOT NULL,
+    motivo TEXT,
+    fecha TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (producto_id) REFERENCES productos (id)
+        ON UPDATE CASCADE
+        ON DELETE RESTRICT,
+    CHECK (tipo_movimiento IN ('ENTRADA', 'SALIDA', 'AJUSTE')),
+    CHECK (cantidad > 0),
+    CHECK (stock_anterior >= 0),
+    CHECK (stock_nuevo >= 0)
+);
+
 CREATE TABLE IF NOT EXISTS ventas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     cliente_id INTEGER,
