@@ -22,3 +22,11 @@ def inicializar_base_datos(ruta_db=DATABASE_PATH):
         with open(SCHEMA_PATH, "r", encoding="utf-8") as archivo_schema:
             conexion.executescript(archivo_schema.read())
         conexion.commit()
+
+
+def conectar():
+    return obtener_conexion()
+
+
+def crear_tablas():
+    inicializar_base_datos()
