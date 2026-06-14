@@ -1,0 +1,14 @@
+database/perfumlab.sqlite3
+database/*.db
+database/*.sqlite
+database/*.sqlite3
+
+__pycache__/
+*.pyc
+
+dist/
+build/
+*.spec
+
+.venv/
+.env
