@@ -20,6 +20,7 @@ class ProductosView(ttk.Frame):
         self.precio_var = tk.StringVar(value="0")
         self.stock_var = tk.StringVar(value="0")
         self.stock_minimo_var = tk.StringVar(value="0")
+        self.filtrar_movimientos_var = tk.BooleanVar(value=False)
         self.descripcion_text = None
 
         self._crear_widgets()
@@ -128,6 +129,12 @@ class ProductosView(ttk.Frame):
             text="Actualizar movimientos",
             command=self.cargar_movimientos,
         ).grid(row=0, column=1, sticky=tk.E)
+        ttk.Checkbutton(
+            encabezado,
+            text="Solo producto seleccionado",
+            variable=self.filtrar_movimientos_var,
+            command=self.cargar_movimientos,
+        ).grid(row=0, column=2, sticky=tk.E, padx=(8, 0))
 
         columnas = (
             "id",
@@ -286,7 +293,8 @@ class ProductosView(ttk.Frame):
         for item in self.tabla_movimientos.get_children():
             self.tabla_movimientos.delete(item)
 
-        movimientos = self.inventario_controller.obtener_movimientos()
+        producto_id = self._obtener_producto_id_para_filtro()
+        movimientos = self.inventario_controller.obtener_movimientos(producto_id)
         productos_cache = {}
 
         for movimiento in movimientos:
@@ -457,6 +465,8 @@ class ProductosView(ttk.Frame):
         self.stock_minimo_var.set(str(producto.stock_minimo))
         self.descripcion_text.delete("1.0", tk.END)
         self.descripcion_text.insert("1.0", producto.descripcion)
+        if self.filtrar_movimientos_var.get():
+            self.cargar_movimientos()
 
     def _leer_producto_desde_formulario(self):
         stock_actual = self._convertir_entero(self.stock_var.get(), "Stock actual")
@@ -492,6 +502,12 @@ class ProductosView(ttk.Frame):
             return None
 
         return int(seleccion[0])
+
+    def _obtener_producto_id_para_filtro(self):
+        if not self.filtrar_movimientos_var.get():
+            return None
+
+        return self._obtener_producto_id_seleccionado(mostrar_error=False)
 
     def _refrescar_producto_seleccionado(self, producto_id):
         self.cargar_productos()

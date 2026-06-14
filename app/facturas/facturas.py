@@ -1,5 +1,5 @@
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import filedialog, messagebox, ttk
 
 from app.database.conexion import inicializar_base_datos, obtener_conexion
 
@@ -125,6 +125,53 @@ def obtener_ventas_para_facturar():
             ORDER BY ventas.id DESC
             """
         ).fetchall()
+
+
+def generar_texto_factura(factura_id):
+    factura = obtener_factura_por_id(factura_id)
+    if factura is None:
+        raise ValueError("La factura no existe.")
+
+    detalles = obtener_detalle_factura(factura_id)
+    cliente = factura["cliente"] or "Sin cliente"
+    lineas = [
+        "PERFUM LAB",
+        "FACTURA",
+        "=" * 48,
+        f"Factura: {factura['numero_factura']}",
+        f"Venta: #{factura['venta_id']}",
+        f"Cliente: {cliente}",
+        f"Fecha: {factura['fecha']}",
+        "-" * 48,
+        f"{'Producto':24} {'Cant.':>5} {'Precio':>8} {'Subtotal':>9}",
+        "-" * 48,
+    ]
+
+    for detalle in detalles:
+        producto = detalle["producto"][:24]
+        lineas.append(
+            f"{producto:24} "
+            f"{detalle['cantidad']:>5} "
+            f"{detalle['precio_unitario']:>8.2f} "
+            f"{detalle['subtotal']:>9.2f}"
+        )
+
+    lineas.extend(
+        [
+            "-" * 48,
+            f"{'TOTAL':>39} L {factura['total']:.2f}",
+            "=" * 48,
+        ]
+    )
+
+    return "\n".join(lineas)
+
+
+def exportar_factura_txt(factura_id, ruta_archivo):
+    texto = generar_texto_factura(factura_id)
+
+    with open(ruta_archivo, "w", encoding="utf-8") as archivo:
+        archivo.write(texto)
 
 
 def abrir_facturas(ventana=None):
@@ -299,6 +346,35 @@ def abrir_facturas(ventana=None):
         else:
             messagebox.showerror("Facturas", mensaje)
 
+    def exportar_factura_seleccionada():
+        seleccion = tabla_facturas.selection()
+        if not seleccion:
+            messagebox.showwarning("Facturas", "Seleccione una factura.")
+            return
+
+        factura_id = int(seleccion[0])
+        factura = obtener_factura_por_id(factura_id)
+        if factura is None:
+            messagebox.showerror("Facturas", "La factura seleccionada no existe.")
+            return
+
+        ruta_archivo = filedialog.asksaveasfilename(
+            parent=ventana,
+            title="Exportar factura",
+            defaultextension=".txt",
+            initialfile=f"{factura['numero_factura']}.txt",
+            filetypes=(("Texto", "*.txt"), ("Todos los archivos", "*.*")),
+        )
+
+        if not ruta_archivo:
+            return
+
+        try:
+            exportar_factura_txt(factura_id, ruta_archivo)
+            messagebox.showinfo("Facturas", "Factura exportada correctamente.")
+        except Exception as error:
+            messagebox.showerror("Facturas", str(error))
+
     def actualizar_todo():
         cargar_ventas_pendientes()
         cargar_facturas()
@@ -310,6 +386,10 @@ def abrir_facturas(ventana=None):
         padx=(0, 6),
     )
     ttk.Button(botones, text="Ver detalle", command=al_seleccionar_factura).pack(
+        side=tk.LEFT,
+        padx=(0, 6),
+    )
+    ttk.Button(botones, text="Exportar factura", command=exportar_factura_seleccionada).pack(
         side=tk.LEFT,
         padx=(0, 6),
     )

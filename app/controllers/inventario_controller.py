@@ -72,23 +72,29 @@ class InventarioController:
             conexion.commit()
             return movimiento_id
 
-    def obtener_movimientos(self):
+    def obtener_movimientos(self, producto_id=None):
+        consulta = """
+            SELECT
+                id,
+                producto_id,
+                tipo_movimiento,
+                cantidad,
+                stock_anterior,
+                stock_nuevo,
+                motivo,
+                fecha
+            FROM movimientos_inventario
+        """
+        parametros = []
+
+        if producto_id is not None:
+            consulta += " WHERE producto_id = ?"
+            parametros.append(producto_id)
+
+        consulta += " ORDER BY fecha DESC, id DESC"
+
         with obtener_conexion(self.ruta_db) as conexion:
-            filas = conexion.execute(
-                """
-                SELECT
-                    id,
-                    producto_id,
-                    tipo_movimiento,
-                    cantidad,
-                    stock_anterior,
-                    stock_nuevo,
-                    motivo,
-                    fecha
-                FROM movimientos_inventario
-                ORDER BY fecha DESC, id DESC
-                """
-            ).fetchall()
+            filas = conexion.execute(consulta, parametros).fetchall()
 
         return [dict(fila) for fila in filas]
 
