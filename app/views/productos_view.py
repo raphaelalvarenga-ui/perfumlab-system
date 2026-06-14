@@ -24,6 +24,7 @@ class ProductosView(ttk.Frame):
 
         self._crear_widgets()
         self.cargar_productos()
+        self.cargar_movimientos()
 
     def _crear_widgets(self):
         self.columnconfigure(0, weight=1)
@@ -37,13 +38,36 @@ class ProductosView(ttk.Frame):
         contenedor.add(tabla_frame, weight=3)
         contenedor.add(formulario_frame, weight=2)
 
-        self._crear_tabla(tabla_frame)
+        self._crear_tablas(tabla_frame)
         self._crear_formulario(formulario_frame)
         self._crear_botones(formulario_frame)
 
-    def _crear_tabla(self, contenedor):
+    def _crear_tablas(self, contenedor):
         contenedor.columnconfigure(0, weight=1)
         contenedor.rowconfigure(0, weight=1)
+
+        tablas = ttk.PanedWindow(contenedor, orient=tk.VERTICAL)
+        tablas.grid(row=0, column=0, sticky="nsew")
+
+        productos_frame = ttk.Frame(tablas)
+        movimientos_frame = ttk.Frame(tablas)
+        tablas.add(productos_frame, weight=3)
+        tablas.add(movimientos_frame, weight=2)
+
+        self._crear_tabla_productos(productos_frame)
+        self._crear_tabla_movimientos(movimientos_frame)
+
+    def _crear_tabla_productos(self, contenedor):
+        contenedor.columnconfigure(0, weight=1)
+        contenedor.rowconfigure(1, weight=1)
+
+        ttk.Label(contenedor, text="Productos").grid(
+            row=0,
+            column=0,
+            columnspan=2,
+            sticky=tk.W,
+            pady=(0, 4),
+        )
 
         columnas = ("id", "sku", "nombre", "marca", "stock", "precio")
         self.tabla = ttk.Treeview(
@@ -82,9 +106,94 @@ class ProductosView(ttk.Frame):
         )
         self.tabla.configure(yscrollcommand=scroll.set)
 
-        self.tabla.grid(row=0, column=0, sticky="nsew")
-        scroll.grid(row=0, column=1, sticky="ns")
+        self.tabla.grid(row=1, column=0, sticky="nsew")
+        scroll.grid(row=1, column=1, sticky="ns")
         self.tabla.bind("<<TreeviewSelect>>", self._al_seleccionar_producto)
+
+    def _crear_tabla_movimientos(self, contenedor):
+        contenedor.columnconfigure(0, weight=1)
+        contenedor.rowconfigure(1, weight=1)
+
+        encabezado = ttk.Frame(contenedor)
+        encabezado.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(8, 4))
+        encabezado.columnconfigure(0, weight=1)
+
+        ttk.Label(encabezado, text="Movimientos de inventario").grid(
+            row=0,
+            column=0,
+            sticky=tk.W,
+        )
+        ttk.Button(
+            encabezado,
+            text="Actualizar movimientos",
+            command=self.cargar_movimientos,
+        ).grid(row=0, column=1, sticky=tk.E)
+
+        columnas = (
+            "id",
+            "producto",
+            "tipo",
+            "cantidad",
+            "stock_anterior",
+            "stock_nuevo",
+            "motivo",
+            "fecha",
+        )
+        self.tabla_movimientos = ttk.Treeview(
+            contenedor,
+            columns=columnas,
+            show="headings",
+            selectmode="browse",
+        )
+
+        encabezados = {
+            "id": "ID",
+            "producto": "Producto",
+            "tipo": "Tipo",
+            "cantidad": "Cantidad",
+            "stock_anterior": "Stock anterior",
+            "stock_nuevo": "Stock nuevo",
+            "motivo": "Motivo",
+            "fecha": "Fecha",
+        }
+
+        anchos = {
+            "id": 50,
+            "producto": 160,
+            "tipo": 90,
+            "cantidad": 80,
+            "stock_anterior": 110,
+            "stock_nuevo": 100,
+            "motivo": 180,
+            "fecha": 140,
+        }
+
+        for columna in columnas:
+            self.tabla_movimientos.heading(columna, text=encabezados[columna])
+            self.tabla_movimientos.column(
+                columna,
+                width=anchos[columna],
+                anchor=tk.W,
+            )
+
+        scroll_y = ttk.Scrollbar(
+            contenedor,
+            orient=tk.VERTICAL,
+            command=self.tabla_movimientos.yview,
+        )
+        scroll_x = ttk.Scrollbar(
+            contenedor,
+            orient=tk.HORIZONTAL,
+            command=self.tabla_movimientos.xview,
+        )
+        self.tabla_movimientos.configure(
+            yscrollcommand=scroll_y.set,
+            xscrollcommand=scroll_x.set,
+        )
+
+        self.tabla_movimientos.grid(row=1, column=0, sticky="nsew")
+        scroll_y.grid(row=1, column=1, sticky="ns")
+        scroll_x.grid(row=2, column=0, sticky="ew")
 
     def _crear_formulario(self, contenedor):
         contenedor.columnconfigure(1, weight=1)
@@ -142,6 +251,7 @@ class ProductosView(ttk.Frame):
             ("Salida", self.registrar_salida),
             ("Ajuste", self.registrar_ajuste),
             ("Actualizar", self.cargar_productos),
+            ("Actualizar movimientos", self.cargar_movimientos),
         ]
 
         for indice, (texto, comando) in enumerate(acciones):
@@ -169,6 +279,37 @@ class ProductosView(ttk.Frame):
                     producto.marca,
                     producto.stock_actual,
                     f"{producto.precio:.2f}",
+                ),
+            )
+
+    def cargar_movimientos(self):
+        for item in self.tabla_movimientos.get_children():
+            self.tabla_movimientos.delete(item)
+
+        movimientos = self.inventario_controller.obtener_movimientos()
+        productos_cache = {}
+
+        for movimiento in movimientos:
+            producto_id = movimiento["producto_id"]
+            if producto_id not in productos_cache:
+                producto = self.productos_controller.obtener_producto(producto_id)
+                productos_cache[producto_id] = (
+                    producto.nombre if producto else f"Producto ID {producto_id}"
+                )
+
+            self.tabla_movimientos.insert(
+                "",
+                tk.END,
+                iid=str(movimiento["id"]),
+                values=(
+                    movimiento["id"],
+                    productos_cache[producto_id],
+                    movimiento["tipo_movimiento"],
+                    movimiento["cantidad"],
+                    movimiento["stock_anterior"],
+                    movimiento["stock_nuevo"],
+                    movimiento["motivo"],
+                    movimiento["fecha"],
                 ),
             )
 
@@ -230,6 +371,7 @@ class ProductosView(ttk.Frame):
         try:
             self.inventario_controller.registrar_entrada(producto_id, cantidad, motivo)
             self._refrescar_producto_seleccionado(producto_id)
+            self.cargar_movimientos()
             messagebox.showinfo("Inventario", "Entrada registrada correctamente.")
         except Exception as error:
             messagebox.showerror("Error", str(error))
@@ -252,6 +394,7 @@ class ProductosView(ttk.Frame):
         try:
             self.inventario_controller.registrar_salida(producto_id, cantidad, motivo)
             self._refrescar_producto_seleccionado(producto_id)
+            self.cargar_movimientos()
             messagebox.showinfo("Inventario", "Salida registrada correctamente.")
         except Exception as error:
             messagebox.showerror("Error", str(error))
@@ -278,6 +421,7 @@ class ProductosView(ttk.Frame):
                 motivo,
             )
             self._refrescar_producto_seleccionado(producto_id)
+            self.cargar_movimientos()
             messagebox.showinfo("Inventario", "Ajuste registrado correctamente.")
         except Exception as error:
             messagebox.showerror("Error", str(error))
