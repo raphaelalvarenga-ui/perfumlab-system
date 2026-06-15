@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from app.database.conexion import inicializar_base_datos, obtener_conexion
+from app.ui_theme import aplicar_tema, configurar_tabla, crear_encabezado
 
 
 def crear_tabla_ventas():
@@ -314,14 +315,18 @@ def buscar_venta_por_id(venta_id):
 
 
 def abrir_ventas(ventana=None):
-    ventana = ventana or tk.Toplevel()
-    ventana.title("Ventas")
-    ventana.geometry("1040x640")
+    standalone = ventana is None
+    contenedor = ventana or tk.Tk()
+    raiz = contenedor.winfo_toplevel()
+    aplicar_tema(raiz)
+    raiz.title("Perfum Lab - Ventas")
+    raiz.geometry("1180x720")
+    raiz.minsize(980, 620)
 
-    frame = ttk.Frame(ventana, padding=10)
+    frame = ttk.Frame(contenedor, padding=10)
     frame.pack(fill=tk.BOTH, expand=True)
     frame.columnconfigure(0, weight=1)
-    frame.rowconfigure(3, weight=1)
+    frame.rowconfigure(4, weight=1)
 
     producto_var = tk.StringVar()
     cliente_var = tk.StringVar()
@@ -330,16 +335,30 @@ def abrir_ventas(ventana=None):
     productos_cache = {}
     carrito = []
 
-    formulario = ttk.Frame(frame)
-    formulario.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+    crear_encabezado(
+        frame,
+        "Ventas",
+        "Arma el carrito, valida stock y registra ventas completadas.",
+    )
+
+    formulario = ttk.Frame(frame, style="Toolbar.TFrame", padding=(12, 10))
+    formulario.grid(row=1, column=0, sticky="ew", pady=(0, 10))
     formulario.columnconfigure(1, weight=1)
     formulario.columnconfigure(3, weight=1)
 
-    ttk.Label(formulario, text="Producto").grid(row=0, column=0, sticky=tk.W, padx=4)
+    ttk.Label(
+        formulario,
+        text="Producto",
+        style="Toolbar.TLabel",
+    ).grid(row=0, column=0, sticky=tk.W, padx=4)
     producto_combo = ttk.Combobox(formulario, textvariable=producto_var, state="readonly")
     producto_combo.grid(row=0, column=1, sticky="ew", padx=4)
 
-    ttk.Label(formulario, text="Cliente").grid(row=0, column=2, sticky=tk.W, padx=4)
+    ttk.Label(
+        formulario,
+        text="Cliente",
+        style="Toolbar.TLabel",
+    ).grid(row=0, column=2, sticky=tk.W, padx=4)
     ttk.Entry(formulario, textvariable=cliente_var).grid(
         row=0,
         column=3,
@@ -347,7 +366,11 @@ def abrir_ventas(ventana=None):
         padx=4,
     )
 
-    ttk.Label(formulario, text="Cantidad").grid(row=0, column=4, sticky=tk.W, padx=4)
+    ttk.Label(
+        formulario,
+        text="Cantidad",
+        style="Toolbar.TLabel",
+    ).grid(row=0, column=4, sticky=tk.W, padx=4)
     ttk.Entry(formulario, textvariable=cantidad_var, width=8).grid(
         row=0,
         column=5,
@@ -356,7 +379,7 @@ def abrir_ventas(ventana=None):
     )
 
     carrito_frame = ttk.LabelFrame(frame, text="Carrito")
-    carrito_frame.grid(row=1, column=0, sticky="nsew", pady=(0, 8))
+    carrito_frame.grid(row=2, column=0, sticky="nsew", pady=(0, 8))
     carrito_frame.columnconfigure(0, weight=1)
     carrito_frame.rowconfigure(0, weight=1)
 
@@ -373,14 +396,26 @@ def abrir_ventas(ventana=None):
         tabla_carrito.heading(columna, text=encabezados_carrito[columna])
         tabla_carrito.column(columna, width=150, anchor=tk.W)
 
+    configurar_tabla(tabla_carrito)
     tabla_carrito.grid(row=0, column=0, sticky="nsew")
 
     botones_carrito = ttk.Frame(frame)
-    botones_carrito.grid(row=2, column=0, sticky="ew", pady=(0, 8))
-    ttk.Label(botones_carrito, textvariable=total_var).pack(side=tk.RIGHT)
+    botones_carrito.grid(row=3, column=0, sticky="ew", pady=(0, 8))
+    botones_carrito.columnconfigure(1, weight=1)
+
+    acciones_carrito = ttk.Frame(botones_carrito)
+    acciones_carrito.grid(row=0, column=0, sticky=tk.W)
+    resumen_carrito = ttk.Label(
+        botones_carrito,
+        textvariable=total_var,
+        style="Section.TLabel",
+    )
+    resumen_carrito.grid(row=0, column=1, sticky=tk.E, padx=12)
+    acciones_venta = ttk.Frame(botones_carrito)
+    acciones_venta.grid(row=0, column=2, sticky=tk.E)
 
     ventas_frame = ttk.LabelFrame(frame, text="Ventas registradas")
-    ventas_frame.grid(row=3, column=0, sticky="nsew")
+    ventas_frame.grid(row=4, column=0, sticky="nsew")
     ventas_frame.columnconfigure(0, weight=1)
     ventas_frame.rowconfigure(0, weight=1)
 
@@ -410,6 +445,7 @@ def abrir_ventas(ventana=None):
         tabla_ventas.heading(columna, text=encabezados_ventas[columna])
         tabla_ventas.column(columna, width=120, anchor=tk.W)
 
+    configurar_tabla(tabla_ventas)
     scroll = ttk.Scrollbar(ventas_frame, orient=tk.VERTICAL, command=tabla_ventas.yview)
     tabla_ventas.configure(yscrollcommand=scroll.set)
     tabla_ventas.grid(row=0, column=0, sticky="nsew")
@@ -439,10 +475,11 @@ def abrir_ventas(ventana=None):
         for item in tabla_ventas.get_children():
             tabla_ventas.delete(item)
 
-        for venta in obtener_ventas():
+        for indice, venta in enumerate(obtener_ventas()):
             tabla_ventas.insert(
                 "",
                 tk.END,
+                tags=("even" if indice % 2 else "odd",),
                 values=(
                     venta["id"],
                     venta["producto"],
@@ -460,12 +497,13 @@ def abrir_ventas(ventana=None):
             tabla_carrito.delete(item)
 
         total = 0
-        for item in carrito:
+        for indice, item in enumerate(carrito):
             total += item["subtotal"]
             tabla_carrito.insert(
                 "",
                 tk.END,
                 iid=str(item["producto_id"]),
+                tags=("even" if indice % 2 else "odd",),
                 values=(
                     item["nombre"],
                     item["cantidad"],
@@ -595,35 +633,49 @@ def abrir_ventas(ventana=None):
         else:
             messagebox.showerror("Ventas", mensaje)
 
-    ttk.Button(botones_carrito, text="Agregar al carrito", command=agregar_al_carrito).pack(
-        side=tk.LEFT,
-        padx=(0, 6),
-    )
-    ttk.Button(botones_carrito, text="Quitar item", command=quitar_del_carrito).pack(
-        side=tk.LEFT,
-        padx=(0, 6),
-    )
-    ttk.Button(botones_carrito, text="Limpiar carrito", command=limpiar_carrito).pack(
-        side=tk.LEFT,
-        padx=(0, 6),
-    )
-    ttk.Button(botones_carrito, text="Registrar venta", command=guardar_venta).pack(
-        side=tk.LEFT,
-        padx=(0, 6),
-    )
-    ttk.Button(botones_carrito, text="Anular venta", command=anular_venta_seleccionada).pack(
-        side=tk.LEFT,
-        padx=(0, 6),
-    )
     ttk.Button(
-        botones_carrito,
+        acciones_carrito,
+        text="Agregar al carrito",
+        command=agregar_al_carrito,
+        style="Primary.TButton",
+    ).grid(row=0, column=0, sticky=tk.W, padx=(0, 6))
+    ttk.Button(
+        acciones_carrito,
+        text="Quitar item",
+        command=quitar_del_carrito,
+        style="Warning.TButton",
+    ).grid(row=0, column=1, sticky=tk.W, padx=(0, 6))
+    ttk.Button(
+        acciones_carrito,
+        text="Limpiar",
+        command=limpiar_carrito,
+        style="Info.TButton",
+    ).grid(row=0, column=2, sticky=tk.W)
+    ttk.Button(
+        acciones_venta,
+        text="Registrar venta",
+        command=guardar_venta,
+        style="Accent.TButton",
+    ).grid(row=0, column=0, sticky=tk.E, padx=(0, 6))
+    ttk.Button(
+        acciones_venta,
+        text="Anular venta",
+        command=anular_venta_seleccionada,
+        style="Danger.TButton",
+    ).grid(row=0, column=1, sticky=tk.E, padx=(0, 6))
+    ttk.Button(
+        acciones_venta,
         text="Actualizar",
         command=lambda: (cargar_productos(), cargar_ventas()),
-    ).pack(side=tk.LEFT)
+        style="Primary.TButton",
+    ).grid(row=0, column=2, sticky=tk.E)
 
     cargar_productos()
     cargar_ventas()
     refrescar_carrito()
+
+    if standalone:
+        raiz.mainloop()
 
 
 def _normalizar_items(items):

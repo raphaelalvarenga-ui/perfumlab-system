@@ -3,6 +3,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from app.database.conexion import inicializar_base_datos, obtener_conexion
+from app.ui_theme import aplicar_tema, configurar_tabla, crear_encabezado
 
 
 def obtener_resumen_reportes(fecha_inicio=None, fecha_fin=None):
@@ -120,14 +121,18 @@ def exportar_csv(ruta_archivo, filas, columnas, encabezados):
 
 
 def abrir_reportes(ventana=None):
-    ventana = ventana or tk.Toplevel()
-    ventana.title("Reportes")
-    ventana.geometry("980x620")
+    standalone = ventana is None
+    contenedor = ventana or tk.Tk()
+    raiz = contenedor.winfo_toplevel()
+    aplicar_tema(raiz)
+    raiz.title("Perfum Lab - Reportes")
+    raiz.geometry("1180x720")
+    raiz.minsize(980, 620)
 
-    frame = ttk.Frame(ventana, padding=10)
+    frame = ttk.Frame(contenedor, padding=10)
     frame.pack(fill=tk.BOTH, expand=True)
     frame.columnconfigure(0, weight=1)
-    frame.rowconfigure(3, weight=1)
+    frame.rowconfigure(4, weight=1)
 
     fecha_inicio_var = tk.StringVar()
     fecha_fin_var = tk.StringVar()
@@ -138,19 +143,33 @@ def abrir_reportes(ventana=None):
         "ventas": [],
     }
 
-    filtros = ttk.Frame(frame)
-    filtros.grid(row=0, column=0, sticky="ew", pady=(0, 8))
+    crear_encabezado(
+        frame,
+        "Reportes",
+        "Consulta ventas, facturacion, productos destacados y bajo stock.",
+    )
+
+    filtros = ttk.Frame(frame, style="Toolbar.TFrame", padding=(12, 10))
+    filtros.grid(row=1, column=0, sticky="ew", pady=(0, 8))
     filtros.columnconfigure(1, weight=1)
     filtros.columnconfigure(3, weight=1)
 
-    ttk.Label(filtros, text="Desde").grid(row=0, column=0, sticky=tk.W, padx=(0, 4))
+    ttk.Label(
+        filtros,
+        text="Desde",
+        style="Toolbar.TLabel",
+    ).grid(row=0, column=0, sticky=tk.W, padx=(0, 4))
     ttk.Entry(filtros, textvariable=fecha_inicio_var).grid(
         row=0,
         column=1,
         sticky="ew",
         padx=(0, 8),
     )
-    ttk.Label(filtros, text="Hasta").grid(row=0, column=2, sticky=tk.W, padx=(0, 4))
+    ttk.Label(
+        filtros,
+        text="Hasta",
+        style="Toolbar.TLabel",
+    ).grid(row=0, column=2, sticky=tk.W, padx=(0, 4))
     ttk.Entry(filtros, textvariable=fecha_fin_var).grid(
         row=0,
         column=3,
@@ -159,14 +178,14 @@ def abrir_reportes(ventana=None):
     )
 
     ttk.Label(frame, textvariable=resumen_var, justify=tk.LEFT).grid(
-        row=1,
+        row=2,
         column=0,
         sticky=tk.W,
         pady=(0, 8),
     )
 
     notebook = ttk.Notebook(frame)
-    notebook.grid(row=3, column=0, sticky="nsew")
+    notebook.grid(row=4, column=0, sticky="nsew")
 
     bajo_stock_tab = ttk.Frame(notebook, padding=6)
     mas_vendidos_tab = ttk.Frame(notebook, padding=6)
@@ -305,7 +324,7 @@ def abrir_reportes(ventana=None):
             return
 
         ruta_archivo = filedialog.asksaveasfilename(
-            parent=ventana,
+            parent=raiz,
             title="Exportar reporte",
             defaultextension=".csv",
             initialfile=archivo_sugerido,
@@ -322,17 +341,26 @@ def abrir_reportes(ventana=None):
             messagebox.showerror("Reportes", str(error))
 
     acciones = ttk.Frame(frame)
-    acciones.grid(row=2, column=0, sticky=tk.E, pady=(0, 8))
+    acciones.grid(row=3, column=0, sticky="ew", pady=(0, 8))
+    acciones.columnconfigure(1, weight=1)
 
-    ttk.Button(acciones, text="Exportar CSV", command=exportar_reporte_actual).pack(
-        side=tk.LEFT,
-        padx=(0, 6),
-    )
-    ttk.Button(acciones, text="Actualizar reportes", command=cargar_reportes).pack(
-        side=tk.LEFT,
-    )
+    ttk.Button(
+        acciones,
+        text="Exportar CSV",
+        command=exportar_reporte_actual,
+        style="Accent.TButton",
+    ).grid(row=0, column=0, sticky=tk.W)
+    ttk.Button(
+        acciones,
+        text="Actualizar reportes",
+        command=cargar_reportes,
+        style="Primary.TButton",
+    ).grid(row=0, column=2, sticky=tk.E)
 
     cargar_reportes()
+
+    if standalone:
+        raiz.mainloop()
 
 
 def _crear_tabla(contenedor, columnas, encabezados):
@@ -345,6 +373,7 @@ def _crear_tabla(contenedor, columnas, encabezados):
         tabla.heading(columna, text=encabezados[columna])
         tabla.column(columna, width=140, anchor=tk.W)
 
+    configurar_tabla(tabla)
     scroll = ttk.Scrollbar(contenedor, orient=tk.VERTICAL, command=tabla.yview)
     tabla.configure(yscrollcommand=scroll.set)
     tabla.grid(row=0, column=0, sticky="nsew")
@@ -359,7 +388,7 @@ def _cargar_tabla(tabla, filas, columnas, moneda=None):
     for item in tabla.get_children():
         tabla.delete(item)
 
-    for fila in filas:
+    for indice, fila in enumerate(filas):
         valores = []
         for columna in columnas:
             valor = fila[columna]
@@ -367,7 +396,12 @@ def _cargar_tabla(tabla, filas, columnas, moneda=None):
                 valor = f"L {float(valor):.2f}"
             valores.append(valor)
 
-        tabla.insert("", tk.END, values=tuple(valores))
+        tabla.insert(
+            "",
+            tk.END,
+            tags=("even" if indice % 2 else "odd",),
+            values=tuple(valores),
+        )
 
 
 def _crear_filtro_fechas(campo_fecha, fecha_inicio=None, fecha_fin=None):

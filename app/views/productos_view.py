@@ -4,6 +4,7 @@ from tkinter import messagebox, simpledialog, ttk
 from app.controllers.inventario_controller import InventarioController
 from app.controllers.productos_controller import ProductosController
 from app.models.producto import Producto
+from app.ui_theme import COLORS, aplicar_tema, configurar_tabla, crear_encabezado
 
 
 class ProductosView(ttk.Frame):
@@ -20,6 +21,8 @@ class ProductosView(ttk.Frame):
         self.precio_var = tk.StringVar(value="0")
         self.stock_var = tk.StringVar(value="0")
         self.stock_minimo_var = tk.StringVar(value="0")
+        self.busqueda_var = tk.StringVar()
+        self.estado_var = tk.StringVar(value="Listo.")
         self.filtrar_movimientos_var = tk.BooleanVar(value=False)
         self.descripcion_text = None
 
@@ -29,19 +32,96 @@ class ProductosView(ttk.Frame):
 
     def _crear_widgets(self):
         self.columnconfigure(0, weight=1)
-        self.rowconfigure(0, weight=1)
+        self.rowconfigure(2, weight=1)
+
+        crear_encabezado(
+            self,
+            "Productos e inventario",
+            "Administra fragancias, precios, existencias y movimientos.",
+        )
+        self._crear_barra_acciones()
 
         contenedor = ttk.PanedWindow(self, orient=tk.HORIZONTAL)
-        contenedor.grid(row=0, column=0, sticky="nsew")
+        contenedor.grid(row=2, column=0, sticky="nsew")
 
         tabla_frame = ttk.Frame(contenedor)
-        formulario_frame = ttk.Frame(contenedor, padding=(10, 0, 0, 0))
+        formulario_panel = ttk.Frame(contenedor, padding=(14, 0, 0, 0))
+        formulario_frame = self._crear_panel_formulario_scroll(formulario_panel)
         contenedor.add(tabla_frame, weight=3)
-        contenedor.add(formulario_frame, weight=2)
+        contenedor.add(formulario_panel, weight=2)
 
         self._crear_tablas(tabla_frame)
         self._crear_formulario(formulario_frame)
         self._crear_botones(formulario_frame)
+
+    def _crear_panel_formulario_scroll(self, contenedor):
+        contenedor.columnconfigure(0, weight=1)
+        contenedor.rowconfigure(0, weight=1)
+
+        canvas = tk.Canvas(
+            contenedor,
+            bg=COLORS["background"],
+            borderwidth=0,
+            highlightthickness=0,
+        )
+        scroll = ttk.Scrollbar(contenedor, orient=tk.VERTICAL, command=canvas.yview)
+        contenido = ttk.Frame(canvas)
+        ventana_contenido = canvas.create_window((0, 0), window=contenido, anchor=tk.NW)
+
+        canvas.configure(yscrollcommand=scroll.set)
+        canvas.grid(row=0, column=0, sticky="nsew")
+        scroll.grid(row=0, column=1, sticky="ns")
+
+        def actualizar_region(_evento=None):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        def ajustar_ancho(evento):
+            canvas.itemconfigure(ventana_contenido, width=evento.width)
+
+        def rueda_mouse(evento):
+            canvas.yview_scroll(int(-1 * (evento.delta / 120)), "units")
+
+        contenido.bind("<Configure>", actualizar_region)
+        canvas.bind("<Configure>", ajustar_ancho)
+        canvas.bind("<Enter>", lambda _evento: canvas.bind_all("<MouseWheel>", rueda_mouse))
+        canvas.bind("<Leave>", lambda _evento: canvas.unbind_all("<MouseWheel>"))
+
+        contenido.columnconfigure(1, weight=1)
+        return contenido
+
+    def _crear_barra_acciones(self):
+        barra = ttk.Frame(self, style="Toolbar.TFrame", padding=(12, 10))
+        barra.grid(row=1, column=0, sticky="ew", pady=(0, 12))
+        barra.columnconfigure(1, weight=1)
+
+        ttk.Label(barra, text="Buscar", style="Toolbar.TLabel").grid(
+            row=0,
+            column=0,
+            sticky=tk.W,
+            padx=(0, 8),
+        )
+        busqueda = ttk.Entry(barra, textvariable=self.busqueda_var)
+        busqueda.grid(row=0, column=1, sticky="ew")
+        busqueda.bind("<Return>", lambda _evento: self.cargar_productos())
+        busqueda.bind("<Escape>", lambda _evento: self._limpiar_busqueda())
+
+        ttk.Button(
+            barra,
+            text="Filtrar",
+            command=self.cargar_productos,
+            style="Primary.TButton",
+        ).grid(row=0, column=2, sticky=tk.E, padx=(8, 0))
+        ttk.Button(
+            barra,
+            text="Limpiar",
+            command=self._limpiar_busqueda,
+            style="Warning.TButton",
+        ).grid(
+            row=0,
+            column=3,
+            sticky=tk.E,
+            padx=(6, 0),
+        )
 
     def _crear_tablas(self, contenedor):
         contenedor.columnconfigure(0, weight=1)
@@ -62,12 +142,12 @@ class ProductosView(ttk.Frame):
         contenedor.columnconfigure(0, weight=1)
         contenedor.rowconfigure(1, weight=1)
 
-        ttk.Label(contenedor, text="Productos").grid(
+        ttk.Label(contenedor, text="Productos", style="Section.TLabel").grid(
             row=0,
             column=0,
             columnspan=2,
             sticky=tk.W,
-            pady=(0, 4),
+            pady=(0, 6),
         )
 
         columnas = ("id", "sku", "nombre", "marca", "stock", "precio")
@@ -100,6 +180,7 @@ class ProductosView(ttk.Frame):
             self.tabla.heading(columna, text=encabezados[columna])
             self.tabla.column(columna, width=anchos[columna], anchor=tk.W)
 
+        configurar_tabla(self.tabla)
         scroll = ttk.Scrollbar(
             contenedor,
             orient=tk.VERTICAL,
@@ -119,7 +200,7 @@ class ProductosView(ttk.Frame):
         encabezado.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(8, 4))
         encabezado.columnconfigure(0, weight=1)
 
-        ttk.Label(encabezado, text="Movimientos de inventario").grid(
+        ttk.Label(encabezado, text="Movimientos de inventario", style="Section.TLabel").grid(
             row=0,
             column=0,
             sticky=tk.W,
@@ -128,6 +209,7 @@ class ProductosView(ttk.Frame):
             encabezado,
             text="Actualizar movimientos",
             command=self.cargar_movimientos,
+            style="Info.TButton",
         ).grid(row=0, column=1, sticky=tk.E)
         ttk.Checkbutton(
             encabezado,
@@ -183,6 +265,7 @@ class ProductosView(ttk.Frame):
                 anchor=tk.W,
             )
 
+        configurar_tabla(self.tabla_movimientos)
         scroll_y = ttk.Scrollbar(
             contenedor,
             orient=tk.VERTICAL,
@@ -205,8 +288,22 @@ class ProductosView(ttk.Frame):
     def _crear_formulario(self, contenedor):
         contenedor.columnconfigure(1, weight=1)
 
-        ttk.Label(contenedor, text="Datos del producto").grid(
+        resumen = ttk.Frame(contenedor, style="Surface.TFrame", padding=12)
+        resumen.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 12))
+        resumen.columnconfigure(0, weight=1)
+        ttk.Label(resumen, textvariable=self.estado_var, style="Metric.TLabel").grid(
             row=0,
+            column=0,
+            sticky=tk.W,
+        )
+        ttk.Label(
+            resumen,
+            text="Resumen del listado visible",
+            style="CardText.TLabel",
+        ).grid(row=1, column=0, sticky=tk.W, pady=(2, 0))
+
+        ttk.Label(contenedor, text="Datos del producto", style="Section.TLabel").grid(
+            row=1,
             column=0,
             columnspan=2,
             sticky=tk.W,
@@ -223,7 +320,7 @@ class ProductosView(ttk.Frame):
             ("Stock minimo", self.stock_minimo_var),
         ]
 
-        for indice, (etiqueta, variable) in enumerate(campos, start=1):
+        for indice, (etiqueta, variable) in enumerate(campos, start=2):
             ttk.Label(contenedor, text=etiqueta).grid(
                 row=indice,
                 column=0,
@@ -238,47 +335,106 @@ class ProductosView(ttk.Frame):
             )
 
         ttk.Label(contenedor, text="Descripcion").grid(
-            row=8,
+            row=9,
             column=0,
             sticky=tk.NW,
             pady=3,
         )
-        self.descripcion_text = tk.Text(contenedor, height=4, width=30)
-        self.descripcion_text.grid(row=8, column=1, sticky="ew", pady=3)
+        self.descripcion_text = tk.Text(
+            contenedor,
+            height=4,
+            width=30,
+            bg="#ffffff",
+            fg=COLORS["text"],
+            insertbackground=COLORS["text"],
+            relief=tk.SOLID,
+            borderwidth=1,
+            highlightthickness=1,
+            highlightbackground=COLORS["border"],
+            highlightcolor=COLORS["primary"],
+        )
+        self.descripcion_text.grid(row=9, column=1, sticky="ew", pady=3)
 
     def _crear_botones(self, contenedor):
         botones_frame = ttk.Frame(contenedor)
-        botones_frame.grid(row=9, column=0, columnspan=2, sticky="ew", pady=(10, 0))
-
-        acciones = [
-            ("Nuevo", self.limpiar_formulario),
-            ("Guardar", self.guardar_producto),
-            ("Eliminar", self.eliminar_producto),
-            ("Entrada", self.registrar_entrada),
-            ("Salida", self.registrar_salida),
-            ("Ajuste", self.registrar_ajuste),
-            ("Actualizar", self.cargar_productos),
-            ("Actualizar movimientos", self.cargar_movimientos),
-        ]
-
-        for indice, (texto, comando) in enumerate(acciones):
-            boton = ttk.Button(botones_frame, text=texto, command=comando)
-            boton.grid(row=indice // 2, column=indice % 2, sticky="ew", padx=3, pady=3)
-
+        botones_frame.grid(row=10, column=0, columnspan=2, sticky="ew", pady=(14, 0))
         botones_frame.columnconfigure(0, weight=1)
-        botones_frame.columnconfigure(1, weight=1)
+
+        ttk.Button(
+            botones_frame,
+            text="Guardar producto",
+            command=self.guardar_producto,
+            style="Primary.TButton",
+        ).grid(row=0, column=0, sticky="ew")
+
+        self._crear_grupo_botones(
+            botones_frame,
+            1,
+            "Producto",
+            (
+                ("Nuevo", self.limpiar_formulario, "Info.TButton"),
+                ("Eliminar", self.eliminar_producto, "Danger.TButton"),
+            ),
+        )
+        self._crear_grupo_botones(
+            botones_frame,
+            2,
+            "Inventario",
+            (
+                ("Entrada", self.registrar_entrada, "Accent.TButton"),
+                ("Salida", self.registrar_salida, "Warning.TButton"),
+                ("Ajuste", self.registrar_ajuste, "Info.TButton"),
+            ),
+        )
+        self._crear_grupo_botones(
+            botones_frame,
+            3,
+            "Vista",
+            (
+                ("Actualizar productos", self.cargar_productos, "Primary.TButton"),
+                ("Actualizar movimientos", self.cargar_movimientos, "Info.TButton"),
+            ),
+        )
+
+    def _crear_grupo_botones(self, contenedor, fila, titulo, acciones):
+        grupo = ttk.Frame(contenedor)
+        grupo.grid(row=fila, column=0, sticky="ew", pady=(12, 0))
+        grupo.columnconfigure(0, weight=1)
+        grupo.columnconfigure(1, weight=1)
+
+        ttk.Label(grupo, text=titulo, style="Muted.TLabel").grid(
+            row=0,
+            column=0,
+            columnspan=2,
+            sticky=tk.W,
+            pady=(0, 5),
+        )
+
+        for indice, (texto, comando, estilo) in enumerate(acciones):
+            ttk.Button(grupo, text=texto, command=comando, style=estilo).grid(
+                row=1 + indice // 2,
+                column=indice % 2,
+                sticky="ew",
+                padx=(0, 6) if indice % 2 == 0 else (6, 0),
+                pady=3,
+            )
 
     def cargar_productos(self):
         for item in self.tabla.get_children():
             self.tabla.delete(item)
 
-        productos = self.productos_controller.listar_productos()
+        productos = self._obtener_productos_visibles()
 
-        for producto in productos:
+        for indice, producto in enumerate(productos):
+            tags = ["even" if indice % 2 else "odd"]
+            if producto.stock_actual <= producto.stock_minimo:
+                tags.append("low_stock")
+
             self.tabla.insert(
                 "",
                 tk.END,
                 iid=str(producto.id),
+                tags=tuple(tags),
                 values=(
                     producto.id,
                     producto.sku,
@@ -288,6 +444,7 @@ class ProductosView(ttk.Frame):
                     f"{producto.precio:.2f}",
                 ),
             )
+        self._actualizar_resumen(productos)
 
     def cargar_movimientos(self):
         for item in self.tabla_movimientos.get_children():
@@ -297,7 +454,7 @@ class ProductosView(ttk.Frame):
         movimientos = self.inventario_controller.obtener_movimientos(producto_id)
         productos_cache = {}
 
-        for movimiento in movimientos:
+        for indice, movimiento in enumerate(movimientos):
             producto_id = movimiento["producto_id"]
             if producto_id not in productos_cache:
                 producto = self.productos_controller.obtener_producto(producto_id)
@@ -309,6 +466,7 @@ class ProductosView(ttk.Frame):
                 "",
                 tk.END,
                 iid=str(movimiento["id"]),
+                tags=("even" if indice % 2 else "odd",),
                 values=(
                     movimiento["id"],
                     productos_cache[producto_id],
@@ -509,6 +667,29 @@ class ProductosView(ttk.Frame):
 
         return self._obtener_producto_id_seleccionado(mostrar_error=False)
 
+    def _obtener_productos_visibles(self):
+        texto = self.busqueda_var.get().strip()
+        if texto:
+            return self.productos_controller.buscar_productos(texto)
+        return self.productos_controller.listar_productos()
+
+    def _actualizar_resumen(self, productos):
+        total_productos = len(productos)
+        total_stock = sum(producto.stock_actual for producto in productos)
+        bajo_stock = sum(
+            1
+            for producto in productos
+            if producto.stock_actual <= producto.stock_minimo
+        )
+        self.estado_var.set(
+            f"{total_productos} productos | {total_stock} unidades | "
+            f"{bajo_stock} en bajo stock"
+        )
+
+    def _limpiar_busqueda(self):
+        self.busqueda_var.set("")
+        self.cargar_productos()
+
     def _refrescar_producto_seleccionado(self, producto_id):
         self.cargar_productos()
         if self.tabla.exists(str(producto_id)):
@@ -545,14 +726,18 @@ class ProductosView(ttk.Frame):
 
 
 def abrir_productos(root=None):
-    ventana = root or tk.Tk()
-    ventana.title("Productos e inventario")
-    ventana.geometry("980x520")
+    standalone = root is None
+    contenedor = root or tk.Tk()
+    ventana = contenedor.winfo_toplevel()
+    aplicar_tema(ventana)
+    ventana.title("Perfum Lab - Productos e inventario")
+    ventana.geometry("1180x720")
+    ventana.minsize(980, 620)
 
-    vista = ProductosView(ventana)
+    vista = ProductosView(contenedor)
     vista.pack(fill=tk.BOTH, expand=True)
 
-    if root is None:
+    if standalone:
         ventana.mainloop()
 
     return vista
