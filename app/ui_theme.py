@@ -1,4 +1,6 @@
+import sys
 import tkinter as tk
+from pathlib import Path
 from tkinter import ttk
 
 
@@ -25,7 +27,33 @@ COLORS = {
 }
 
 
+def obtener_ruta_recurso(*partes):
+    base = Path(getattr(sys, "_MEIPASS", Path(__file__).resolve().parents[1]))
+    return base.joinpath(*partes)
+
+
+def aplicar_icono(root):
+    icono_ico = obtener_ruta_recurso("assets", "logo", "logoperfumlab-window.ico")
+    icono_png = obtener_ruta_recurso("assets", "logo", "logoperfumlab-window.png")
+
+    if icono_ico.exists():
+        try:
+            root.iconbitmap(str(icono_ico))
+        except tk.TclError:
+            pass
+
+    if icono_png.exists():
+        try:
+            icono = tk.PhotoImage(file=str(icono_png))
+            root.iconphoto(True, icono)
+            root._perfumlab_icono = icono
+        except tk.TclError:
+            pass
+
+
 def aplicar_tema(root):
+    aplicar_icono(root)
+
     style = ttk.Style(root)
     try:
         style.theme_use("clam")
