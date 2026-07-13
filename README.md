@@ -4,18 +4,18 @@ Sistema funcional para una empresa de perfumes.
 ## Actualizar el proyecto desde GitHub
 
 Para que otro integrante del equipo reciba los cambios subidos a la rama
-`develop`, debe ejecutar estos comandos dentro de la carpeta del proyecto:
+`main`, debe ejecutar estos comandos dentro de la carpeta del proyecto:
 
 ```bash
-git switch develop
-git pull origin develop
+git switch main
+git pull origin main
 ```
 
-Si la computadora todavia no tiene la rama `develop` creada localmente:
+Si la computadora todavia no tiene la rama `main` creada localmente:
 
 ```bash
 git fetch origin
-git switch -c develop origin/develop
+git switch -c main origin/main
 ```
 
 Antes de hacer `pull`, es recomendable revisar si hay cambios locales sin
@@ -56,6 +56,41 @@ Si PyInstaller no esta instalado:
 pip install pyinstaller
 ```
 
+## Generar el exe en otra computadora
+
+En una computadora nueva, primero se descarga el proyecto desde GitHub:
+
+```bash
+git clone https://github.com/raphaelalvarenga-ui/perfumlab-system.git
+cd perfumlab-system
+git switch main
+```
+
+Luego se instala PyInstaller, se crea la base de datos y se genera el
+ejecutable:
+
+```bash
+python -m pip install pyinstaller
+python crear_db.py
+python -m PyInstaller PerfumLab.spec
+```
+
+Cuando termine, el ejecutable queda en:
+
+```text
+dist\PerfumLab\PerfumLab.exe
+```
+
+Para abrirlo desde PowerShell:
+
+```powershell
+.\dist\PerfumLab\PerfumLab.exe
+```
+
+Importante: si se va a pasar el programa a otra computadora, se debe pasar
+toda la carpeta `dist\PerfumLab`, no solo el archivo `.exe`, porque esa carpeta
+incluye dependencias, imagenes y archivos necesarios para que funcione.
+
 ## Subir el archivo PerfumLab.spec
 
 El archivo `PerfumLab.spec` contiene la configuracion para generar el
@@ -65,7 +100,7 @@ puede subir forzadamente con:
 ```bash
 git add -f PerfumLab.spec
 git commit -m "agregar configuracion para generar exe"
-git push origin develop
+git push origin main
 ```
 
 ## Subir dist manualmente
@@ -76,7 +111,7 @@ generado a GitHub, se puede hacer forzando la carpeta `dist/`:
 ```bash
 git add -f dist/
 git commit -m "agregar ejecutable compilado"
-git push origin develop
+git push origin main
 ```
 
 Lo mas limpio para trabajar en equipo es subir el codigo y el archivo
