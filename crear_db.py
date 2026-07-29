@@ -8,7 +8,7 @@ def main():
     crear_tabla_ventas()
     crear_tabla_facturas()
 
-    print("Base de datos creada correctamente.")
+    print("Archivos JSON creados correctamente.")
 
 
 if __name__ == "__main__":

@@ -33,6 +33,26 @@ al repositorio.
 
 Cada computadora debe generar su propio `dist/` despues de descargar el codigo.
 
+## Ejecutar el programa
+
+Desde la raiz del proyecto:
+
+```powershell
+cd C:\Users\yesid\OneDrive\Escritorio\perfumelabsystem\perfumlab-system
+uv run python crear_db.py
+uv run python app\main.py
+```
+
+El comando `crear_db.py` crea o verifica los archivos JSON en `database/json/`.
+El comando `app\main.py` abre la ventana principal del sistema.
+
+Si Python esta instalado directamente en la computadora, tambien se puede usar:
+
+```powershell
+python crear_db.py
+python app\main.py
+```
+
 ## Generar el ejecutable
 
 Desde la raiz del proyecto:
@@ -42,7 +62,8 @@ python crear_db.py
 pyinstaller PerfumLab.spec
 ```
 
-Al finalizar, PyInstaller crea la carpeta:
+El comando `python crear_db.py` inicializa los archivos JSON de datos en
+`database/json/`. Al finalizar, PyInstaller crea la carpeta:
 
 ```text
 dist/PerfumLab/
@@ -66,7 +87,7 @@ cd perfumlab-system
 git switch main
 ```
 
-Luego se instala PyInstaller, se crea la base de datos y se genera el
+Luego se instala PyInstaller, se crean los archivos JSON y se genera el
 ejecutable:
 
 ```bash

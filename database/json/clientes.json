@@ -1,0 +1,92 @@
+[
+    {
+        "id": 1,
+        "nombre": "Raphael Alvarenga",
+        "telefono": null,
+        "direccion": null,
+        "activo": 1,
+        "fecha_creacion": "2026-06-14 22:55:58",
+        "fecha_actualizacion": null
+    },
+    {
+        "id": 2,
+        "nombre": "rapha",
+        "telefono": null,
+        "direccion": null,
+        "activo": 1,
+        "fecha_creacion": "2026-06-14 23:07:08",
+        "fecha_actualizacion": null
+    },
+    {
+        "id": 3,
+        "nombre": "juan",
+        "telefono": null,
+        "direccion": null,
+        "activo": 1,
+        "fecha_creacion": "2026-06-14 23:20:39",
+        "fecha_actualizacion": null
+    },
+    {
+        "id": 4,
+        "nombre": "raphiña",
+        "telefono": null,
+        "direccion": null,
+        "activo": 1,
+        "fecha_creacion": "2026-06-14 23:35:37",
+        "fecha_actualizacion": null
+    },
+    {
+        "id": 5,
+        "nombre": "luis",
+        "telefono": null,
+        "direccion": null,
+        "activo": 1,
+        "fecha_creacion": "2026-06-17 18:38:55",
+        "fecha_actualizacion": null
+    },
+    {
+        "id": 6,
+        "nombre": "Maria Lopez",
+        "telefono": "9999-1001",
+        "direccion": "La Paz, Honduras",
+        "activo": 1,
+        "fecha_creacion": "2026-07-13 19:55:11",
+        "fecha_actualizacion": null
+    },
+    {
+        "id": 7,
+        "nombre": "Carlos Rivera",
+        "telefono": "9999-1002",
+        "direccion": "Comayagua, Honduras",
+        "activo": 1,
+        "fecha_creacion": "2026-07-13 19:55:11",
+        "fecha_actualizacion": null
+    },
+    {
+        "id": 8,
+        "nombre": "Sofia Martinez",
+        "telefono": "9999-1003",
+        "direccion": "Tegucigalpa, Honduras",
+        "activo": 1,
+        "fecha_creacion": "2026-07-13 19:55:11",
+        "fecha_actualizacion": null
+    },
+    {
+        "id": 9,
+        "nombre": "Hotel Brisas",
+        "telefono": "9999-1004",
+        "direccion": "Valle de Angeles, Honduras",
+        "activo": 1,
+        "fecha_creacion": "2026-07-13 19:55:11",
+        "fecha_actualizacion": null
+    },
+    {
+        "id": 10,
+        "nombre": "Boutique Aroma",
+        "telefono": "9999-1005",
+        "direccion": "San Pedro Sula, Honduras",
+        "activo": 1,
+        "fecha_creacion": "2026-07-13 19:55:11",
+        "fecha_actualizacion": null
+    }
+]

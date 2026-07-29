@@ -2,113 +2,116 @@ import csv
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from app.database.conexion import inicializar_base_datos, obtener_conexion
+from app.database.json_storage import buscar_por_id, cargar_todo, es_activo, inicializar_datos_json
 from app.ui_theme import aplicar_tema, configurar_tabla, crear_encabezado
 
 
 def obtener_resumen_reportes(fecha_inicio=None, fecha_fin=None):
-    inicializar_base_datos()
-    filtro, parametros = _crear_filtro_fechas("ventas.fecha", fecha_inicio, fecha_fin)
-
-    with obtener_conexion() as conexion:
-        ventas = conexion.execute(
-            f"""
-            SELECT
-                COUNT(*) AS cantidad_ventas,
-                COALESCE(SUM(total), 0) AS total_ventas
-            FROM ventas
-            WHERE estado = 'Completada' {filtro}
-            """,
-            parametros,
-        ).fetchone()
-
-        facturas = conexion.execute(
-            f"""
-            SELECT
-                COUNT(*) AS cantidad_facturas,
-                COALESCE(SUM(facturas.total), 0) AS total_facturado
-            FROM facturas
-            INNER JOIN ventas ON ventas.id = facturas.venta_id
-            WHERE ventas.estado = 'Completada' {filtro}
-            """,
-            parametros,
-        ).fetchone()
-
-        productos_bajo_stock = conexion.execute(
-            """
-            SELECT COUNT(*) AS total
-            FROM productos
-            WHERE activo = 1 AND stock_actual <= stock_minimo
-            """
-        ).fetchone()
+    inicializar_datos_json()
+    datos = cargar_todo()
+    ventas_completadas = [
+        venta
+        for venta in datos["ventas"]
+        if venta["estado"] == "Completada"
+        and _fecha_en_rango(venta["fecha"], fecha_inicio, fecha_fin)
+    ]
+    venta_ids = {int(venta["id"]) for venta in ventas_completadas}
+    facturas = [
+        factura
+        for factura in datos["facturas"]
+        if int(factura["venta_id"]) in venta_ids
+    ]
+    productos_bajo_stock = [
+        producto
+        for producto in datos["productos"]
+        if es_activo(producto)
+        and int(producto["stock_actual"]) <= int(producto["stock_minimo"])
+    ]
 
     return {
-        "cantidad_ventas": ventas["cantidad_ventas"],
-        "total_ventas": ventas["total_ventas"],
-        "cantidad_facturas": facturas["cantidad_facturas"],
-        "total_facturado": facturas["total_facturado"],
-        "productos_bajo_stock": productos_bajo_stock["total"],
+        "cantidad_ventas": len(ventas_completadas),
+        "total_ventas": sum(float(venta["total"]) for venta in ventas_completadas),
+        "cantidad_facturas": len(facturas),
+        "total_facturado": sum(float(factura["total"]) for factura in facturas),
+        "productos_bajo_stock": len(productos_bajo_stock),
     }
 
 
 def obtener_productos_bajo_stock():
-    inicializar_base_datos()
-
-    with obtener_conexion() as conexion:
-        return conexion.execute(
-            """
-            SELECT id, sku, nombre, stock_actual, stock_minimo
-            FROM productos
-            WHERE activo = 1 AND stock_actual <= stock_minimo
-            ORDER BY stock_actual ASC, nombre ASC
-            """
-        ).fetchall()
+    datos = cargar_todo()
+    productos = [
+        {
+            "id": producto["id"],
+            "sku": producto["sku"],
+            "nombre": producto["nombre"],
+            "stock_actual": int(producto["stock_actual"]),
+            "stock_minimo": int(producto["stock_minimo"]),
+        }
+        for producto in datos["productos"]
+        if es_activo(producto)
+        and int(producto["stock_actual"]) <= int(producto["stock_minimo"])
+    ]
+    productos.sort(key=lambda producto: (producto["stock_actual"], producto["nombre"].lower()))
+    return productos
 
 
 def obtener_productos_mas_vendidos(fecha_inicio=None, fecha_fin=None):
-    inicializar_base_datos()
-    filtro, parametros = _crear_filtro_fechas("ventas.fecha", fecha_inicio, fecha_fin)
+    datos = cargar_todo()
+    ventas_validas = {
+        int(venta["id"])
+        for venta in datos["ventas"]
+        if venta["estado"] == "Completada"
+        and _fecha_en_rango(venta["fecha"], fecha_inicio, fecha_fin)
+    }
+    resumen = {}
 
-    with obtener_conexion() as conexion:
-        return conexion.execute(
-            f"""
-            SELECT
-                productos.id,
-                productos.sku,
-                productos.nombre,
-                SUM(detalle_venta.cantidad) AS cantidad_vendida,
-                SUM(detalle_venta.subtotal) AS total_vendido
-            FROM detalle_venta
-            INNER JOIN ventas ON ventas.id = detalle_venta.venta_id
-            INNER JOIN productos ON productos.id = detalle_venta.producto_id
-            WHERE ventas.estado = 'Completada' {filtro}
-            GROUP BY productos.id, productos.sku, productos.nombre
-            ORDER BY cantidad_vendida DESC, total_vendido DESC
-            """,
-            parametros,
-        ).fetchall()
+    for detalle in datos["detalle_venta"]:
+        if int(detalle["venta_id"]) not in ventas_validas:
+            continue
+
+        producto = buscar_por_id(datos["productos"], detalle["producto_id"])
+        if producto is None:
+            continue
+
+        producto_id = int(producto["id"])
+        if producto_id not in resumen:
+            resumen[producto_id] = {
+                "id": producto["id"],
+                "sku": producto["sku"],
+                "nombre": producto["nombre"],
+                "cantidad_vendida": 0,
+                "total_vendido": 0.0,
+            }
+
+        resumen[producto_id]["cantidad_vendida"] += int(detalle["cantidad"])
+        resumen[producto_id]["total_vendido"] += float(detalle["subtotal"])
+
+    productos = list(resumen.values())
+    productos.sort(
+        key=lambda producto: (
+            producto["cantidad_vendida"],
+            producto["total_vendido"],
+        ),
+        reverse=True,
+    )
+    return productos
 
 
 def obtener_ventas_recientes(fecha_inicio=None, fecha_fin=None):
-    inicializar_base_datos()
-    filtro, parametros = _crear_filtro_fechas("ventas.fecha", fecha_inicio, fecha_fin)
-
-    with obtener_conexion() as conexion:
-        return conexion.execute(
-            f"""
-            SELECT
-                ventas.id,
-                clientes.nombre AS cliente,
-                ventas.total,
-                ventas.estado,
-                ventas.fecha
-            FROM ventas
-            LEFT JOIN clientes ON clientes.id = ventas.cliente_id
-            WHERE 1 = 1 {filtro}
-            ORDER BY ventas.id DESC
-            """,
-            parametros,
-        ).fetchall()
+    datos = cargar_todo()
+    ventas = [
+        {
+            "id": venta["id"],
+            "cliente": _nombre_cliente(datos["clientes"], venta.get("cliente_id")),
+            "total": float(venta["total"]),
+            "estado": venta["estado"],
+            "fecha": venta["fecha"],
+        }
+        for venta in datos["ventas"]
+        if _fecha_en_rango(venta["fecha"], fecha_inicio, fecha_fin)
+    ]
+    ventas.sort(key=lambda venta: int(venta["id"]), reverse=True)
+    return ventas
 
 
 def exportar_csv(ruta_archivo, filas, columnas, encabezados):
@@ -404,16 +407,21 @@ def _cargar_tabla(tabla, filas, columnas, moneda=None):
         )
 
 
-def _crear_filtro_fechas(campo_fecha, fecha_inicio=None, fecha_fin=None):
-    filtros = []
-    parametros = []
+def _fecha_en_rango(fecha, fecha_inicio=None, fecha_fin=None):
+    fecha = str(fecha or "")[:10]
 
-    if fecha_inicio:
-        filtros.append(f"AND date({campo_fecha}) >= date(?)")
-        parametros.append(fecha_inicio)
+    if fecha_inicio and fecha < fecha_inicio:
+        return False
 
-    if fecha_fin:
-        filtros.append(f"AND date({campo_fecha}) <= date(?)")
-        parametros.append(fecha_fin)
+    if fecha_fin and fecha > fecha_fin:
+        return False
 
-    return " ".join(filtros), parametros
+    return True
+
+
+def _nombre_cliente(clientes, cliente_id):
+    if cliente_id is None:
+        return None
+
+    cliente = buscar_por_id(clientes, cliente_id)
+    return cliente["nombre"] if cliente else None

@@ -1,0 +1,42 @@
+[
+    {
+        "id": 1,
+        "cliente_id": 1,
+        "usuario_id": 1,
+        "fecha": "2026-06-14 22:55:58",
+        "total": 280.0,
+        "estado": "Completada"
+    },
+    {
+        "id": 2,
+        "cliente_id": 2,
+        "usuario_id": 1,
+        "fecha": "2026-06-14 23:07:08",
+        "total": 280.0,
+        "estado": "Completada"
+    },
+    {
+        "id": 3,
+        "cliente_id": 3,
+        "usuario_id": 1,
+        "fecha": "2026-06-14 23:20:39",
+        "total": 280.0,
+        "estado": "Completada"
+    },
+    {
+        "id": 4,
+        "cliente_id": 4,
+        "usuario_id": 1,
+        "fecha": "2026-06-14 23:35:37",
+        "total": 1120.0,
+        "estado": "Completada"
+    },
+    {
+        "id": 5,
+        "cliente_id": 5,
+        "usuario_id": 1,
+        "fecha": "2026-06-17 18:38:55",
+        "total": 2250.0,
+        "estado": "Completada"
+    }
+]

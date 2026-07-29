@@ -1,0 +1,12 @@
+[
+    {
+        "id": 1,
+        "nombre": "Administrador",
+        "usuario": "admin",
+        "contrasena": "1234",
+        "rol": "Administrador",
+        "activo": 1,
+        "fecha_creacion": "2026-06-14 22:24:55",
+        "fecha_actualizacion": null
+    }
+]

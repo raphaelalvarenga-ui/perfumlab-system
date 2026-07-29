@@ -1,0 +1,192 @@
+[
+    {
+        "id": 1,
+        "producto_id": 1,
+        "tipo_movimiento": "ENTRADA",
+        "cantidad": 20,
+        "stock_anterior": 10,
+        "stock_nuevo": 30,
+        "motivo": "compra inicial",
+        "fecha": "2026-06-14 22:26:07"
+    },
+    {
+        "id": 2,
+        "producto_id": 1,
+        "tipo_movimiento": "SALIDA",
+        "cantidad": 5,
+        "stock_anterior": 30,
+        "stock_nuevo": 25,
+        "motivo": "prueba salida",
+        "fecha": "2026-06-14 22:26:26"
+    },
+    {
+        "id": 3,
+        "producto_id": 1,
+        "tipo_movimiento": "AJUSTE",
+        "cantidad": 25,
+        "stock_anterior": 25,
+        "stock_nuevo": 50,
+        "motivo": "conteo fisico",
+        "fecha": "2026-06-14 22:26:58"
+    },
+    {
+        "id": 4,
+        "producto_id": 1,
+        "tipo_movimiento": "SALIDA",
+        "cantidad": 1,
+        "stock_anterior": 50,
+        "stock_nuevo": 49,
+        "motivo": "Venta #1 - Raphael Alvarenga",
+        "fecha": "2026-06-14 22:55:58"
+    },
+    {
+        "id": 5,
+        "producto_id": 1,
+        "tipo_movimiento": "SALIDA",
+        "cantidad": 1,
+        "stock_anterior": 49,
+        "stock_nuevo": 48,
+        "motivo": "Venta #2 - rapha",
+        "fecha": "2026-06-14 23:07:08"
+    },
+    {
+        "id": 6,
+        "producto_id": 1,
+        "tipo_movimiento": "SALIDA",
+        "cantidad": 1,
+        "stock_anterior": 48,
+        "stock_nuevo": 47,
+        "motivo": "Venta #3 - juan",
+        "fecha": "2026-06-14 23:20:39"
+    },
+    {
+        "id": 7,
+        "producto_id": 1,
+        "tipo_movimiento": "SALIDA",
+        "cantidad": 4,
+        "stock_anterior": 47,
+        "stock_nuevo": 43,
+        "motivo": "Venta #4 - raphiña",
+        "fecha": "2026-06-14 23:35:37"
+    },
+    {
+        "id": 8,
+        "producto_id": 3,
+        "tipo_movimiento": "SALIDA",
+        "cantidad": 5,
+        "stock_anterior": 10,
+        "stock_nuevo": 5,
+        "motivo": "Venta #5 - luis",
+        "fecha": "2026-06-17 18:38:55"
+    },
+    {
+        "id": 9,
+        "producto_id": 4,
+        "tipo_movimiento": "ENTRADA",
+        "cantidad": 18,
+        "stock_anterior": 0,
+        "stock_nuevo": 18,
+        "motivo": "Carga inicial de productos",
+        "fecha": "2026-07-13 19:55:11"
+    },
+    {
+        "id": 10,
+        "producto_id": 5,
+        "tipo_movimiento": "ENTRADA",
+        "cantidad": 4,
+        "stock_anterior": 0,
+        "stock_nuevo": 4,
+        "motivo": "Carga inicial de productos",
+        "fecha": "2026-07-13 19:55:11"
+    },
+    {
+        "id": 11,
+        "producto_id": 6,
+        "tipo_movimiento": "ENTRADA",
+        "cantidad": 22,
+        "stock_anterior": 0,
+        "stock_nuevo": 22,
+        "motivo": "Carga inicial de productos",
+        "fecha": "2026-07-13 19:55:11"
+    },
+    {
+        "id": 12,
+        "producto_id": 7,
+        "tipo_movimiento": "ENTRADA",
+        "cantidad": 15,
+        "stock_anterior": 0,
+        "stock_nuevo": 15,
+        "motivo": "Carga inicial de productos",
+        "fecha": "2026-07-13 19:55:11"
+    },
+    {
+        "id": 13,
+        "producto_id": 8,
+        "tipo_movimiento": "ENTRADA",
+        "cantidad": 20,
+        "stock_anterior": 0,
+        "stock_nuevo": 20,
+        "motivo": "Carga inicial de productos",
+        "fecha": "2026-07-13 19:55:11"
+    },
+    {
+        "id": 14,
+        "producto_id": 9,
+        "tipo_movimiento": "ENTRADA",
+        "cantidad": 6,
+        "stock_anterior": 0,
+        "stock_nuevo": 6,
+        "motivo": "Carga inicial de productos",
+        "fecha": "2026-07-13 19:55:11"
+    },
+    {
+        "id": 15,
+        "producto_id": 10,
+        "tipo_movimiento": "ENTRADA",
+        "cantidad": 25,
+        "stock_anterior": 0,
+        "stock_nuevo": 25,
+        "motivo": "Carga inicial de productos",
+        "fecha": "2026-07-13 19:55:11"
+    },
+    {
+        "id": 16,
+        "producto_id": 11,
+        "tipo_movimiento": "ENTRADA",
+        "cantidad": 12,
+        "stock_anterior": 0,
+        "stock_nuevo": 12,
+        "motivo": "Carga inicial de productos",
+        "fecha": "2026-07-13 19:55:11"
+    },
+    {
+        "id": 17,
+        "producto_id": 12,
+        "tipo_movimiento": "ENTRADA",
+        "cantidad": 30,
+        "stock_anterior": 0,
+        "stock_nuevo": 30,
+        "motivo": "Carga inicial de productos",
+        "fecha": "2026-07-13 19:55:11"
+    },
+    {
+        "id": 18,
+        "producto_id": 13,
+        "tipo_movimiento": "ENTRADA",
+        "cantidad": 16,
+        "stock_anterior": 0,
+        "stock_nuevo": 16,
+        "motivo": "Carga inicial de productos",
+        "fecha": "2026-07-13 19:55:11"
+    },
+    {
+        "id": 19,
+        "producto_id": 14,
+        "tipo_movimiento": "ENTRADA",
+        "cantidad": 9,
+        "stock_anterior": 0,
+        "stock_nuevo": 9,
+        "motivo": "Carga inicial de productos",
+        "fecha": "2026-07-13 19:55:11"
+    }
+]

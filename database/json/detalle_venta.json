@@ -1,0 +1,42 @@
+[
+    {
+        "id": 1,
+        "venta_id": 1,
+        "producto_id": 1,
+        "cantidad": 1,
+        "precio_unitario": 280.0,
+        "subtotal": 280.0
+    },
+    {
+        "id": 2,
+        "venta_id": 2,
+        "producto_id": 1,
+        "cantidad": 1,
+        "precio_unitario": 280.0,
+        "subtotal": 280.0
+    },
+    {
+        "id": 3,
+        "venta_id": 3,
+        "producto_id": 1,
+        "cantidad": 1,
+        "precio_unitario": 280.0,
+        "subtotal": 280.0
+    },
+    {
+        "id": 4,
+        "venta_id": 4,
+        "producto_id": 1,
+        "cantidad": 4,
+        "precio_unitario": 280.0,
+        "subtotal": 1120.0
+    },
+    {
+        "id": 5,
+        "venta_id": 5,
+        "producto_id": 3,
+        "cantidad": 5,
+        "precio_unitario": 450.0,
+        "subtotal": 2250.0
+    }
+]

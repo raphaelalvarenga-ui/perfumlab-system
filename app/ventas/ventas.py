@@ -1,26 +1,37 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 
-from app.database.conexion import inicializar_base_datos, obtener_conexion
+from app.database.json_storage import (
+    buscar_por_id,
+    cargar_tabla,
+    cargar_todo,
+    es_activo,
+    fecha_actual,
+    guardar_todo,
+    inicializar_datos_json,
+    siguiente_id,
+)
 from app.ui_theme import aplicar_tema, configurar_tabla, crear_encabezado
 
 
 def crear_tabla_ventas():
-    inicializar_base_datos()
+    inicializar_datos_json()
 
 
 def obtener_productos_para_venta():
-    inicializar_base_datos()
-
-    with obtener_conexion() as conexion:
-        return conexion.execute(
-            """
-            SELECT id, sku, nombre, precio, stock_actual
-            FROM productos
-            WHERE activo = 1
-            ORDER BY nombre ASC
-            """
-        ).fetchall()
+    productos = [
+        {
+            "id": producto["id"],
+            "sku": producto["sku"],
+            "nombre": producto["nombre"],
+            "precio": float(producto["precio"]),
+            "stock_actual": int(producto["stock_actual"]),
+        }
+        for producto in cargar_tabla("productos")
+        if es_activo(producto)
+    ]
+    productos.sort(key=lambda producto: producto["nombre"].lower())
+    return productos
 
 
 def registrar_venta(producto_id, cliente, cantidad, usuario_id=1):
@@ -32,7 +43,7 @@ def registrar_venta(producto_id, cliente, cantidad, usuario_id=1):
 
 
 def registrar_venta_multiple(cliente, items, usuario_id=1):
-    inicializar_base_datos()
+    inicializar_datos_json()
 
     if not cliente.strip():
         return False, "El nombre del cliente es obligatorio."
@@ -45,273 +56,220 @@ def registrar_venta_multiple(cliente, items, usuario_id=1):
     if not items_normalizados:
         return False, "Debe agregar al menos un producto a la venta."
 
-    with obtener_conexion() as conexion:
-        productos = _obtener_productos_por_id(
-            conexion,
-            [item["producto_id"] for item in items_normalizados],
+    datos = cargar_todo()
+    productos = _obtener_productos_por_id(
+        datos["productos"],
+        [item["producto_id"] for item in items_normalizados],
+    )
+
+    total = 0
+    detalles = []
+
+    for item in items_normalizados:
+        producto = productos.get(item["producto_id"])
+
+        if producto is None:
+            return False, f"El producto {item['producto_id']} no existe o esta inactivo."
+
+        cantidad = item["cantidad"]
+        stock_actual = int(producto["stock_actual"])
+
+        if cantidad > stock_actual:
+            return (
+                False,
+                f"No hay suficiente stock para {producto['nombre']}. "
+                f"Disponible: {stock_actual}.",
+            )
+
+        precio = float(producto["precio"])
+        subtotal = precio * cantidad
+        total += subtotal
+        detalles.append(
+            {
+                "producto": producto,
+                "cantidad": cantidad,
+                "precio": precio,
+                "subtotal": subtotal,
+                "stock_anterior": stock_actual,
+                "stock_nuevo": stock_actual - cantidad,
+            }
         )
 
-        total = 0
-        detalles = []
+    cliente_id = _obtener_o_crear_cliente(datos["clientes"], cliente)
+    venta_id = siguiente_id("ventas", datos["ventas"])
+    datos["ventas"].append(
+        {
+            "id": venta_id,
+            "cliente_id": cliente_id,
+            "usuario_id": usuario_id,
+            "fecha": fecha_actual(),
+            "total": float(total),
+            "estado": "Completada",
+        }
+    )
 
-        for item in items_normalizados:
-            producto = productos.get(item["producto_id"])
+    siguiente_detalle_id = siguiente_id("detalle_venta", datos["detalle_venta"])
+    siguiente_movimiento_id = siguiente_id(
+        "movimientos_inventario",
+        datos["movimientos_inventario"],
+    )
 
-            if producto is None:
-                return False, f"El producto {item['producto_id']} no existe o esta inactivo."
+    for detalle in detalles:
+        producto = detalle["producto"]
 
-            cantidad = item["cantidad"]
-            stock_actual = int(producto["stock_actual"])
-
-            if cantidad > stock_actual:
-                return (
-                    False,
-                    f"No hay suficiente stock para {producto['nombre']}. "
-                    f"Disponible: {stock_actual}.",
-                )
-
-            precio = float(producto["precio"])
-            subtotal = precio * cantidad
-            total += subtotal
-            detalles.append(
-                {
-                    "producto": producto,
-                    "cantidad": cantidad,
-                    "precio": precio,
-                    "subtotal": subtotal,
-                    "stock_anterior": stock_actual,
-                    "stock_nuevo": stock_actual - cantidad,
-                }
-            )
-
-        cliente_id = _obtener_o_crear_cliente(conexion, cliente)
-        cursor = conexion.execute(
-            """
-            INSERT INTO ventas (cliente_id, usuario_id, total, estado)
-            VALUES (?, ?, ?, ?)
-            """,
-            (cliente_id, usuario_id, total, "Completada"),
+        datos["detalle_venta"].append(
+            {
+                "id": siguiente_detalle_id,
+                "venta_id": venta_id,
+                "producto_id": producto["id"],
+                "cantidad": detalle["cantidad"],
+                "precio_unitario": detalle["precio"],
+                "subtotal": detalle["subtotal"],
+            }
         )
-        venta_id = cursor.lastrowid
+        siguiente_detalle_id += 1
 
-        for detalle in detalles:
-            producto = detalle["producto"]
+        producto["stock_actual"] = detalle["stock_nuevo"]
+        producto["fecha_actualizacion"] = fecha_actual()
 
-            conexion.execute(
-                """
-                INSERT INTO detalle_venta (
-                    venta_id,
-                    producto_id,
-                    cantidad,
-                    precio_unitario,
-                    subtotal
-                )
-                VALUES (?, ?, ?, ?, ?)
-                """,
-                (
-                    venta_id,
-                    producto["id"],
-                    detalle["cantidad"],
-                    detalle["precio"],
-                    detalle["subtotal"],
-                ),
-            )
+        datos["movimientos_inventario"].append(
+            {
+                "id": siguiente_movimiento_id,
+                "producto_id": producto["id"],
+                "tipo_movimiento": "SALIDA",
+                "cantidad": detalle["cantidad"],
+                "stock_anterior": detalle["stock_anterior"],
+                "stock_nuevo": detalle["stock_nuevo"],
+                "motivo": f"Venta #{venta_id} - {cliente.strip()}",
+                "fecha": fecha_actual(),
+            }
+        )
+        siguiente_movimiento_id += 1
 
-            conexion.execute(
-                """
-                UPDATE productos
-                SET stock_actual = ?, fecha_actualizacion = CURRENT_TIMESTAMP
-                WHERE id = ?
-                """,
-                (detalle["stock_nuevo"], producto["id"]),
-            )
-
-            conexion.execute(
-                """
-                INSERT INTO movimientos_inventario (
-                    producto_id,
-                    tipo_movimiento,
-                    cantidad,
-                    stock_anterior,
-                    stock_nuevo,
-                    motivo
-                )
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    producto["id"],
-                    "SALIDA",
-                    detalle["cantidad"],
-                    detalle["stock_anterior"],
-                    detalle["stock_nuevo"],
-                    f"Venta #{venta_id} - {cliente.strip()}",
-                ),
-            )
+    guardar_todo(
+        {
+            "clientes": datos["clientes"],
+            "ventas": datos["ventas"],
+            "detalle_venta": datos["detalle_venta"],
+            "productos": datos["productos"],
+            "movimientos_inventario": datos["movimientos_inventario"],
+        }
+    )
 
     return True, f"Venta #{venta_id} registrada correctamente. Total: L {total:.2f}"
 
 
 def anular_venta(venta_id):
-    inicializar_base_datos()
+    inicializar_datos_json()
+    datos = cargar_todo()
+    venta = buscar_por_id(datos["ventas"], venta_id)
 
-    with obtener_conexion() as conexion:
-        venta = conexion.execute(
-            "SELECT id, estado FROM ventas WHERE id = ?",
-            (venta_id,),
-        ).fetchone()
+    if venta is None:
+        return False, "La venta no existe."
 
-        if venta is None:
-            return False, "La venta no existe."
+    if venta["estado"] == "Anulada":
+        return False, "La venta ya esta anulada."
 
-        if venta["estado"] == "Anulada":
-            return False, "La venta ya esta anulada."
+    factura = next(
+        (
+            factura
+            for factura in datos["facturas"]
+            if int(factura["venta_id"]) == int(venta_id)
+        ),
+        None,
+    )
 
-        factura = conexion.execute(
-            "SELECT id FROM facturas WHERE venta_id = ?",
-            (venta_id,),
-        ).fetchone()
+    if factura is not None:
+        return False, "No se puede anular una venta que ya tiene factura."
 
-        if factura is not None:
-            return False, "No se puede anular una venta que ya tiene factura."
+    detalles = [
+        detalle
+        for detalle in datos["detalle_venta"]
+        if int(detalle["venta_id"]) == int(venta_id)
+    ]
 
-        detalles = conexion.execute(
-            """
-            SELECT
-                detalle_venta.producto_id,
-                productos.nombre,
-                productos.stock_actual,
-                detalle_venta.cantidad
-            FROM detalle_venta
-            INNER JOIN productos ON productos.id = detalle_venta.producto_id
-            WHERE detalle_venta.venta_id = ?
-            """,
-            (venta_id,),
-        ).fetchall()
+    if not detalles:
+        return False, "La venta no tiene detalle de productos."
 
-        if not detalles:
-            return False, "La venta no tiene detalle de productos."
+    siguiente_movimiento_id = siguiente_id(
+        "movimientos_inventario",
+        datos["movimientos_inventario"],
+    )
 
-        for detalle in detalles:
-            stock_anterior = int(detalle["stock_actual"])
-            cantidad = int(detalle["cantidad"])
-            stock_nuevo = stock_anterior + cantidad
+    for detalle in detalles:
+        producto = buscar_por_id(datos["productos"], detalle["producto_id"])
 
-            conexion.execute(
-                """
-                UPDATE productos
-                SET stock_actual = ?, fecha_actualizacion = CURRENT_TIMESTAMP
-                WHERE id = ?
-                """,
-                (stock_nuevo, detalle["producto_id"]),
-            )
+        if producto is None:
+            return False, f"El producto {detalle['producto_id']} no existe."
 
-            conexion.execute(
-                """
-                INSERT INTO movimientos_inventario (
-                    producto_id,
-                    tipo_movimiento,
-                    cantidad,
-                    stock_anterior,
-                    stock_nuevo,
-                    motivo
-                )
-                VALUES (?, ?, ?, ?, ?, ?)
-                """,
-                (
-                    detalle["producto_id"],
-                    "ENTRADA",
-                    cantidad,
-                    stock_anterior,
-                    stock_nuevo,
-                    f"Anulacion de venta #{venta_id}",
-                ),
-            )
+        stock_anterior = int(producto["stock_actual"])
+        cantidad = int(detalle["cantidad"])
+        stock_nuevo = stock_anterior + cantidad
+        producto["stock_actual"] = stock_nuevo
+        producto["fecha_actualizacion"] = fecha_actual()
 
-        conexion.execute(
-            "UPDATE ventas SET estado = ? WHERE id = ?",
-            ("Anulada", venta_id),
+        datos["movimientos_inventario"].append(
+            {
+                "id": siguiente_movimiento_id,
+                "producto_id": detalle["producto_id"],
+                "tipo_movimiento": "ENTRADA",
+                "cantidad": cantidad,
+                "stock_anterior": stock_anterior,
+                "stock_nuevo": stock_nuevo,
+                "motivo": f"Anulacion de venta #{venta_id}",
+                "fecha": fecha_actual(),
+            }
         )
+        siguiente_movimiento_id += 1
+
+    venta["estado"] = "Anulada"
+    guardar_todo(
+        {
+            "ventas": datos["ventas"],
+            "productos": datos["productos"],
+            "movimientos_inventario": datos["movimientos_inventario"],
+        }
+    )
 
     return True, f"Venta #{venta_id} anulada correctamente. Stock devuelto."
 
 
 def obtener_ventas():
-    inicializar_base_datos()
-
-    with obtener_conexion() as conexion:
-        return conexion.execute(
-            """
-            SELECT
-                ventas.id,
-                GROUP_CONCAT(
-                    productos.nombre || ' x' || detalle_venta.cantidad,
-                    ', '
-                ) AS producto,
-                clientes.nombre AS cliente,
-                SUM(detalle_venta.cantidad) AS cantidad,
-                NULL AS precio_unitario,
-                ventas.total AS total,
-                ventas.estado,
-                ventas.fecha
-            FROM ventas
-            INNER JOIN detalle_venta ON detalle_venta.venta_id = ventas.id
-            INNER JOIN productos ON productos.id = detalle_venta.producto_id
-            LEFT JOIN clientes ON clientes.id = ventas.cliente_id
-            GROUP BY ventas.id, clientes.nombre, ventas.total, ventas.estado, ventas.fecha
-            ORDER BY ventas.id DESC
-            """
-        ).fetchall()
+    datos = cargar_todo()
+    ventas = [
+        _armar_resumen_venta(venta, datos)
+        for venta in datos["ventas"]
+        if _detalles_de_venta(datos["detalle_venta"], venta["id"])
+    ]
+    ventas.sort(key=lambda venta: int(venta["id"]), reverse=True)
+    return ventas
 
 
 def obtener_detalle_venta(venta_id):
-    inicializar_base_datos()
-
-    with obtener_conexion() as conexion:
-        return conexion.execute(
-            """
-            SELECT
-                detalle_venta.id,
-                detalle_venta.venta_id,
-                productos.nombre AS producto,
-                detalle_venta.cantidad,
-                detalle_venta.precio_unitario,
-                detalle_venta.subtotal
-            FROM detalle_venta
-            INNER JOIN productos ON productos.id = detalle_venta.producto_id
-            WHERE detalle_venta.venta_id = ?
-            ORDER BY detalle_venta.id ASC
-            """,
-            (venta_id,),
-        ).fetchall()
+    datos = cargar_todo()
+    detalles = _detalles_de_venta(datos["detalle_venta"], venta_id)
+    detalles.sort(key=lambda detalle: int(detalle["id"]))
+    return [
+        {
+            "id": detalle["id"],
+            "venta_id": detalle["venta_id"],
+            "producto": _nombre_producto(datos["productos"], detalle["producto_id"]),
+            "cantidad": int(detalle["cantidad"]),
+            "precio_unitario": float(detalle["precio_unitario"]),
+            "subtotal": float(detalle["subtotal"]),
+        }
+        for detalle in detalles
+    ]
 
 
 def buscar_venta_por_id(venta_id):
-    inicializar_base_datos()
+    datos = cargar_todo()
+    venta = buscar_por_id(datos["ventas"], venta_id)
 
-    with obtener_conexion() as conexion:
-        return conexion.execute(
-            """
-            SELECT
-                ventas.id,
-                GROUP_CONCAT(
-                    productos.nombre || ' x' || detalle_venta.cantidad,
-                    ', '
-                ) AS producto,
-                clientes.nombre AS cliente,
-                SUM(detalle_venta.cantidad) AS cantidad,
-                NULL AS precio_unitario,
-                ventas.total AS total,
-                ventas.estado,
-                ventas.fecha
-            FROM ventas
-            INNER JOIN detalle_venta ON detalle_venta.venta_id = ventas.id
-            INNER JOIN productos ON productos.id = detalle_venta.producto_id
-            LEFT JOIN clientes ON clientes.id = ventas.cliente_id
-            WHERE ventas.id = ?
-            GROUP BY ventas.id, clientes.nombre, ventas.total, ventas.estado, ventas.fecha
-            """,
-            (venta_id,),
-        ).fetchone()
+    if venta is None:
+        return None
+
+    return _armar_resumen_venta(venta, datos)
 
 
 def abrir_ventas(ventana=None):
@@ -701,37 +659,84 @@ def _normalizar_items(items):
     ]
 
 
-def _obtener_productos_por_id(conexion, producto_ids):
+def _obtener_productos_por_id(productos_disponibles, producto_ids):
     productos = {}
 
     for producto_id in producto_ids:
-        producto = conexion.execute(
-            """
-            SELECT id, nombre, precio, stock_actual
-            FROM productos
-            WHERE id = ? AND activo = 1
-            """,
-            (producto_id,),
-        ).fetchone()
+        producto = buscar_por_id(productos_disponibles, producto_id)
 
-        if producto:
+        if producto and es_activo(producto):
             productos[producto_id] = producto
 
     return productos
 
 
-def _obtener_o_crear_cliente(conexion, nombre):
+def _obtener_o_crear_cliente(clientes, nombre):
     nombre = nombre.strip()
-    cliente = conexion.execute(
-        "SELECT id FROM clientes WHERE LOWER(nombre) = LOWER(?)",
-        (nombre,),
-    ).fetchone()
+    cliente = next(
+        (
+            cliente
+            for cliente in clientes
+            if cliente["nombre"].strip().lower() == nombre.lower()
+        ),
+        None,
+    )
 
     if cliente:
         return cliente["id"]
 
-    cursor = conexion.execute(
-        "INSERT INTO clientes (nombre) VALUES (?)",
-        (nombre,),
+    cliente_id = siguiente_id("clientes", clientes)
+    clientes.append(
+        {
+            "id": cliente_id,
+            "nombre": nombre,
+            "telefono": "",
+            "direccion": "",
+            "activo": 1,
+            "fecha_creacion": fecha_actual(),
+            "fecha_actualizacion": None,
+        }
     )
-    return cursor.lastrowid
+    return cliente_id
+
+
+def _armar_resumen_venta(venta, datos):
+    detalles = _detalles_de_venta(datos["detalle_venta"], venta["id"])
+    productos = [
+        f"{_nombre_producto(datos['productos'], detalle['producto_id'])} x{detalle['cantidad']}"
+        for detalle in detalles
+    ]
+    cantidad_total = sum(int(detalle["cantidad"]) for detalle in detalles)
+
+    return {
+        "id": venta["id"],
+        "producto": ", ".join(productos),
+        "cliente": _nombre_cliente(datos["clientes"], venta.get("cliente_id")),
+        "cantidad": cantidad_total,
+        "precio_unitario": None,
+        "total": float(venta["total"]),
+        "estado": venta["estado"],
+        "fecha": venta["fecha"],
+    }
+
+
+def _detalles_de_venta(detalles, venta_id):
+    venta_id = int(venta_id)
+    return [
+        detalle
+        for detalle in detalles
+        if int(detalle["venta_id"]) == venta_id
+    ]
+
+
+def _nombre_cliente(clientes, cliente_id):
+    if cliente_id is None:
+        return None
+
+    cliente = buscar_por_id(clientes, cliente_id)
+    return cliente["nombre"] if cliente else None
+
+
+def _nombre_producto(productos, producto_id):
+    producto = buscar_por_id(productos, producto_id)
+    return producto["nombre"] if producto else f"Producto ID {producto_id}"

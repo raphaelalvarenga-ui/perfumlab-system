@@ -1,153 +1,156 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from app.database.conexion import inicializar_base_datos, obtener_conexion
+from app.database.json_storage import (
+    buscar_por_id,
+    cargar_todo,
+    fecha_actual,
+    guardar_todo,
+    inicializar_datos_json,
+    siguiente_id,
+)
 from app.ui_theme import aplicar_tema, configurar_tabla, crear_encabezado
 
 
 def crear_tabla_facturas():
-    inicializar_base_datos()
+    inicializar_datos_json()
 
 
 def generar_factura(venta_id):
-    inicializar_base_datos()
+    inicializar_datos_json()
+    datos = cargar_todo()
+    venta = buscar_por_id(datos["ventas"], venta_id)
 
-    with obtener_conexion() as conexion:
-        venta = conexion.execute(
-            "SELECT id, total, estado FROM ventas WHERE id = ?",
-            (venta_id,),
-        ).fetchone()
+    if venta is None:
+        return False, "La venta no existe."
 
-        if venta is None:
-            return False, "La venta no existe."
+    if venta["estado"] != "Completada":
+        return False, "Solo se pueden facturar ventas completadas."
 
-        if venta["estado"] != "Completada":
-            return False, "Solo se pueden facturar ventas completadas."
+    factura = _factura_por_venta(datos["facturas"], venta_id)
 
-        factura = conexion.execute(
-            "SELECT numero_factura FROM facturas WHERE venta_id = ?",
-            (venta_id,),
-        ).fetchone()
+    if factura:
+        return False, f"La venta ya tiene factura: {factura['numero_factura']}."
 
-        if factura:
-            return False, f"La venta ya tiene factura: {factura['numero_factura']}."
-
-        numero_factura = f"FAC-{int(venta_id):06d}"
-        conexion.execute(
-            """
-            INSERT INTO facturas (venta_id, numero_factura, total)
-            VALUES (?, ?, ?)
-            """,
-            (venta_id, numero_factura, venta["total"]),
-        )
+    numero_factura = f"FAC-{int(venta_id):06d}"
+    datos["facturas"].append(
+        {
+            "id": siguiente_id("facturas", datos["facturas"]),
+            "venta_id": int(venta_id),
+            "numero_factura": numero_factura,
+            "fecha": fecha_actual(),
+            "total": float(venta["total"]),
+        }
+    )
+    guardar_todo({"facturas": datos["facturas"]})
 
     return True, f"Factura {numero_factura} generada correctamente."
 
 
 def obtener_facturas():
-    inicializar_base_datos()
-
-    with obtener_conexion() as conexion:
-        return conexion.execute(
-            """
-            SELECT
-                facturas.id,
-                facturas.numero_factura,
-                facturas.venta_id,
-                clientes.nombre AS cliente,
-                facturas.total,
-                facturas.fecha
-            FROM facturas
-            INNER JOIN ventas ON ventas.id = facturas.venta_id
-            LEFT JOIN clientes ON clientes.id = ventas.cliente_id
-            ORDER BY facturas.id DESC
-            """
-        ).fetchall()
+    datos = cargar_todo()
+    facturas = [_armar_factura(factura, datos) for factura in datos["facturas"]]
+    facturas.sort(key=lambda factura: int(factura["id"]), reverse=True)
+    return facturas
 
 
 def obtener_factura_por_id(factura_id):
-    inicializar_base_datos()
-
-    with obtener_conexion() as conexion:
-        return conexion.execute(
-            """
-            SELECT
-                facturas.id,
-                facturas.numero_factura,
-                facturas.venta_id,
-                clientes.nombre AS cliente,
-                facturas.total,
-                facturas.fecha
-            FROM facturas
-            INNER JOIN ventas ON ventas.id = facturas.venta_id
-            LEFT JOIN clientes ON clientes.id = ventas.cliente_id
-            WHERE facturas.id = ?
-            """,
-            (factura_id,),
-        ).fetchone()
+    datos = cargar_todo()
+    factura = buscar_por_id(datos["facturas"], factura_id)
+    return _armar_factura(factura, datos) if factura else None
 
 
 def obtener_factura_por_venta_id(venta_id):
-    inicializar_base_datos()
-
-    with obtener_conexion() as conexion:
-        return conexion.execute(
-            """
-            SELECT
-                facturas.id,
-                facturas.numero_factura,
-                facturas.venta_id,
-                clientes.nombre AS cliente,
-                facturas.total,
-                facturas.fecha
-            FROM facturas
-            INNER JOIN ventas ON ventas.id = facturas.venta_id
-            LEFT JOIN clientes ON clientes.id = ventas.cliente_id
-            WHERE facturas.venta_id = ?
-            """,
-            (venta_id,),
-        ).fetchone()
+    datos = cargar_todo()
+    factura = _factura_por_venta(datos["facturas"], venta_id)
+    return _armar_factura(factura, datos) if factura else None
 
 
 def obtener_detalle_factura(factura_id):
-    inicializar_base_datos()
+    datos = cargar_todo()
+    factura = buscar_por_id(datos["facturas"], factura_id)
 
-    with obtener_conexion() as conexion:
-        return conexion.execute(
-            """
-            SELECT
-                productos.nombre AS producto,
-                detalle_venta.cantidad,
-                detalle_venta.precio_unitario,
-                detalle_venta.subtotal
-            FROM facturas
-            INNER JOIN detalle_venta ON detalle_venta.venta_id = facturas.venta_id
-            INNER JOIN productos ON productos.id = detalle_venta.producto_id
-            WHERE facturas.id = ?
-            ORDER BY detalle_venta.id ASC
-            """,
-            (factura_id,),
-        ).fetchall()
+    if factura is None:
+        return []
+
+    detalles = [
+        detalle
+        for detalle in datos["detalle_venta"]
+        if int(detalle["venta_id"]) == int(factura["venta_id"])
+    ]
+    detalles.sort(key=lambda detalle: int(detalle["id"]))
+    return [
+        {
+            "producto": _nombre_producto(datos["productos"], detalle["producto_id"]),
+            "cantidad": int(detalle["cantidad"]),
+            "precio_unitario": float(detalle["precio_unitario"]),
+            "subtotal": float(detalle["subtotal"]),
+        }
+        for detalle in detalles
+    ]
 
 
 def obtener_ventas_para_facturar():
-    inicializar_base_datos()
+    datos = cargar_todo()
+    ventas_con_factura = {
+        int(factura["venta_id"])
+        for factura in datos["facturas"]
+    }
+    ventas = [
+        {
+            "id": venta["id"],
+            "cliente": _nombre_cliente(datos["clientes"], venta.get("cliente_id")),
+            "total": float(venta["total"]),
+            "fecha": venta["fecha"],
+        }
+        for venta in datos["ventas"]
+        if venta["estado"] == "Completada"
+        and int(venta["id"]) not in ventas_con_factura
+    ]
+    ventas.sort(key=lambda venta: int(venta["id"]), reverse=True)
+    return ventas
 
-    with obtener_conexion() as conexion:
-        return conexion.execute(
-            """
-            SELECT
-                ventas.id,
-                clientes.nombre AS cliente,
-                ventas.total,
-                ventas.fecha
-            FROM ventas
-            LEFT JOIN clientes ON clientes.id = ventas.cliente_id
-            LEFT JOIN facturas ON facturas.venta_id = ventas.id
-            WHERE facturas.id IS NULL AND ventas.estado = 'Completada'
-            ORDER BY ventas.id DESC
-            """
-        ).fetchall()
+
+def _armar_factura(factura, datos):
+    venta = buscar_por_id(datos["ventas"], factura["venta_id"])
+    cliente = None
+
+    if venta:
+        cliente = _nombre_cliente(datos["clientes"], venta.get("cliente_id"))
+
+    return {
+        "id": factura["id"],
+        "numero_factura": factura["numero_factura"],
+        "venta_id": factura["venta_id"],
+        "cliente": cliente,
+        "total": float(factura["total"]),
+        "fecha": factura["fecha"],
+    }
+
+
+def _factura_por_venta(facturas, venta_id):
+    venta_id = int(venta_id)
+    return next(
+        (
+            factura
+            for factura in facturas
+            if int(factura["venta_id"]) == venta_id
+        ),
+        None,
+    )
+
+
+def _nombre_cliente(clientes, cliente_id):
+    if cliente_id is None:
+        return None
+
+    cliente = buscar_por_id(clientes, cliente_id)
+    return cliente["nombre"] if cliente else None
+
+
+def _nombre_producto(productos, producto_id):
+    producto = buscar_por_id(productos, producto_id)
+    return producto["nombre"] if producto else f"Producto ID {producto_id}"
 
 
 def generar_texto_factura(factura_id):

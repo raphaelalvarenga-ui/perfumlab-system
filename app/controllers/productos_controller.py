@@ -1,161 +1,193 @@
-from app.database.conexion import DATABASE_PATH, inicializar_base_datos, obtener_conexion
+from app.database.json_storage import (
+    DATABASE_PATH,
+    buscar_por_id,
+    cargar_tabla,
+    coincide_texto,
+    es_activo,
+    fecha_actual,
+    guardar_tabla,
+    inicializar_datos_json,
+    siguiente_id,
+)
 from app.models.categoria import Categoria
 from app.models.producto import Producto
 
 
 class ProductosController:
     def __init__(self, ruta_db=DATABASE_PATH):
-        self.ruta_db = ruta_db
-        inicializar_base_datos(self.ruta_db)
+        self.ruta_datos = ruta_db
+        inicializar_datos_json(self.ruta_datos)
 
     def crear_categoria(self, categoria):
         categoria.validar()
+        categorias = cargar_tabla("categorias", self.ruta_datos)
+        nombre = categoria.nombre.strip()
 
-        with obtener_conexion(self.ruta_db) as conexion:
-            cursor = conexion.execute(
-                """
-                INSERT INTO categorias (nombre, descripcion, activo)
-                VALUES (?, ?, ?)
-                """,
-                (
-                    categoria.nombre.strip(),
-                    categoria.descripcion.strip(),
-                    int(categoria.activo),
-                ),
-            )
-            conexion.commit()
-            return cursor.lastrowid
+        if self._existe_nombre_categoria(categorias, nombre):
+            raise ValueError("Ya existe una categoria con ese nombre.")
+
+        categoria_id = siguiente_id("categorias", categorias)
+        categorias.append(
+            {
+                "id": categoria_id,
+                "nombre": nombre,
+                "descripcion": categoria.descripcion.strip(),
+                "activo": int(categoria.activo),
+                "fecha_creacion": fecha_actual(),
+                "fecha_actualizacion": None,
+            }
+        )
+        guardar_tabla("categorias", categorias, self.ruta_datos)
+        return categoria_id
 
     def listar_categorias(self, incluir_inactivas=False):
-        consulta = "SELECT * FROM categorias"
-        parametros = []
+        categorias = cargar_tabla("categorias", self.ruta_datos)
 
         if not incluir_inactivas:
-            consulta += " WHERE activo = ?"
-            parametros.append(1)
+            categorias = [categoria for categoria in categorias if es_activo(categoria)]
 
-        consulta += " ORDER BY nombre ASC"
-
-        with obtener_conexion(self.ruta_db) as conexion:
-            filas = conexion.execute(consulta, parametros).fetchall()
-            return [Categoria.desde_fila(fila) for fila in filas]
+        categorias.sort(key=lambda categoria: categoria["nombre"].lower())
+        return [Categoria.desde_fila(categoria) for categoria in categorias]
 
     def crear_producto(self, producto):
         producto.validar()
+        productos = cargar_tabla("productos", self.ruta_datos)
 
-        with obtener_conexion(self.ruta_db) as conexion:
-            cursor = conexion.execute(
-                """
-                INSERT INTO productos (
-                    sku, nombre, categoria_id, marca, descripcion,
-                    costo, precio, stock_actual, stock_minimo, activo
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                """,
-                self._valores_producto(producto),
-            )
-            conexion.commit()
-            return cursor.lastrowid
+        if self._existe_sku_producto(productos, producto.sku):
+            raise ValueError("Ya existe un producto con ese SKU.")
+
+        if producto.categoria_id is not None:
+            self._validar_categoria(producto.categoria_id)
+
+        producto_id = siguiente_id("productos", productos)
+        productos.append(self._crear_registro_producto(producto_id, producto))
+        guardar_tabla("productos", productos, self.ruta_datos)
+        return producto_id
 
     def obtener_producto(self, producto_id):
-        with obtener_conexion(self.ruta_db) as conexion:
-            fila = conexion.execute(
-                "SELECT * FROM productos WHERE id = ?",
-                (producto_id,),
-            ).fetchone()
-
-        return Producto.desde_fila(fila) if fila else None
+        productos = cargar_tabla("productos", self.ruta_datos)
+        producto = buscar_por_id(productos, producto_id)
+        return Producto.desde_fila(producto) if producto else None
 
     def listar_productos(self, incluir_inactivos=False):
-        consulta = "SELECT * FROM productos"
-        parametros = []
+        productos = cargar_tabla("productos", self.ruta_datos)
 
         if not incluir_inactivos:
-            consulta += " WHERE activo = ?"
-            parametros.append(1)
+            productos = [producto for producto in productos if es_activo(producto)]
 
-        consulta += " ORDER BY nombre ASC"
-
-        with obtener_conexion(self.ruta_db) as conexion:
-            filas = conexion.execute(consulta, parametros).fetchall()
-            return [Producto.desde_fila(fila) for fila in filas]
+        productos.sort(key=lambda producto: producto["nombre"].lower())
+        return [Producto.desde_fila(producto) for producto in productos]
 
     def buscar_productos(self, texto, incluir_inactivos=False):
-        texto_busqueda = f"%{texto.strip()}%"
-        consulta = """
-            SELECT * FROM productos
-            WHERE (sku LIKE ? OR nombre LIKE ? OR marca LIKE ?)
-        """
-        parametros = [texto_busqueda, texto_busqueda, texto_busqueda]
+        texto = texto.strip()
+        productos = cargar_tabla("productos", self.ruta_datos)
 
         if not incluir_inactivos:
-            consulta += " AND activo = ?"
-            parametros.append(1)
+            productos = [producto for producto in productos if es_activo(producto)]
 
-        consulta += " ORDER BY nombre ASC"
-
-        with obtener_conexion(self.ruta_db) as conexion:
-            filas = conexion.execute(consulta, parametros).fetchall()
-            return [Producto.desde_fila(fila) for fila in filas]
+        productos = [
+            producto
+            for producto in productos
+            if (
+                coincide_texto(producto.get("sku"), texto)
+                or coincide_texto(producto.get("nombre"), texto)
+                or coincide_texto(producto.get("marca"), texto)
+            )
+        ]
+        productos.sort(key=lambda producto: producto["nombre"].lower())
+        return [Producto.desde_fila(producto) for producto in productos]
 
     def actualizar_producto(self, producto_id, producto):
         producto.validar()
+        productos = cargar_tabla("productos", self.ruta_datos)
+        registro = buscar_por_id(productos, producto_id)
 
-        with obtener_conexion(self.ruta_db) as conexion:
-            cursor = conexion.execute(
-                """
-                UPDATE productos
-                SET
-                    sku = ?,
-                    nombre = ?,
-                    categoria_id = ?,
-                    marca = ?,
-                    descripcion = ?,
-                    costo = ?,
-                    precio = ?,
-                    stock_actual = ?,
-                    stock_minimo = ?,
-                    activo = ?,
-                    fecha_actualizacion = CURRENT_TIMESTAMP
-                WHERE id = ?
-                """,
-                (*self._valores_producto(producto), producto_id),
-            )
-            conexion.commit()
-            return cursor.rowcount > 0
+        if registro is None:
+            return False
+
+        if self._existe_sku_producto(productos, producto.sku, excluir_id=producto_id):
+            raise ValueError("Ya existe un producto con ese SKU.")
+
+        if producto.categoria_id is not None:
+            self._validar_categoria(producto.categoria_id)
+
+        registro.update(
+            {
+                "sku": producto.sku.strip(),
+                "nombre": producto.nombre.strip(),
+                "categoria_id": producto.categoria_id,
+                "marca": producto.marca.strip(),
+                "descripcion": producto.descripcion.strip(),
+                "costo": float(producto.costo),
+                "precio": float(producto.precio),
+                "stock_actual": int(producto.stock_actual),
+                "stock_minimo": int(producto.stock_minimo),
+                "activo": int(producto.activo),
+                "fecha_actualizacion": fecha_actual(),
+            }
+        )
+        guardar_tabla("productos", productos, self.ruta_datos)
+        return True
 
     def eliminar_producto(self, producto_id):
-        with obtener_conexion(self.ruta_db) as conexion:
-            cursor = conexion.execute(
-                """
-                UPDATE productos
-                SET activo = 0, fecha_actualizacion = CURRENT_TIMESTAMP
-                WHERE id = ?
-                """,
-                (producto_id,),
-            )
-            conexion.commit()
-            return cursor.rowcount > 0
+        productos = cargar_tabla("productos", self.ruta_datos)
+        registro = buscar_por_id(productos, producto_id)
+
+        if registro is None:
+            return False
+
+        registro["activo"] = 0
+        registro["fecha_actualizacion"] = fecha_actual()
+        guardar_tabla("productos", productos, self.ruta_datos)
+        return True
 
     def eliminar_producto_permanente(self, producto_id):
-        with obtener_conexion(self.ruta_db) as conexion:
-            cursor = conexion.execute(
-                "DELETE FROM productos WHERE id = ?",
-                (producto_id,),
-            )
-            conexion.commit()
-            return cursor.rowcount > 0
+        productos = cargar_tabla("productos", self.ruta_datos)
+        cantidad_inicial = len(productos)
+        productos = [
+            producto
+            for producto in productos
+            if int(producto.get("id", 0)) != int(producto_id)
+        ]
+        guardar_tabla("productos", productos, self.ruta_datos)
+        return len(productos) < cantidad_inicial
 
-    def _valores_producto(self, producto):
-        return (
-            producto.sku.strip(),
-            producto.nombre.strip(),
-            producto.categoria_id,
-            producto.marca.strip(),
-            producto.descripcion.strip(),
-            producto.costo,
-            producto.precio,
-            producto.stock_actual,
-            producto.stock_minimo,
-            int(producto.activo),
+    def _crear_registro_producto(self, producto_id, producto):
+        return {
+            "id": producto_id,
+            "sku": producto.sku.strip(),
+            "nombre": producto.nombre.strip(),
+            "categoria_id": producto.categoria_id,
+            "marca": producto.marca.strip(),
+            "descripcion": producto.descripcion.strip(),
+            "costo": float(producto.costo),
+            "precio": float(producto.precio),
+            "stock_actual": int(producto.stock_actual),
+            "stock_minimo": int(producto.stock_minimo),
+            "ml": getattr(producto, "ml", 50),
+            "imagen": getattr(producto, "imagen", None),
+            "activo": int(producto.activo),
+            "fecha_creacion": fecha_actual(),
+            "fecha_actualizacion": None,
+        }
+
+    def _validar_categoria(self, categoria_id):
+        categorias = cargar_tabla("categorias", self.ruta_datos)
+        categoria = buscar_por_id(categorias, categoria_id)
+
+        if categoria is None:
+            raise ValueError("La categoria indicada no existe.")
+
+    def _existe_nombre_categoria(self, categorias, nombre):
+        nombre = nombre.strip().lower()
+        return any(categoria["nombre"].strip().lower() == nombre for categoria in categorias)
+
+    def _existe_sku_producto(self, productos, sku, excluir_id=None):
+        sku = sku.strip().lower()
+        excluir_id = int(excluir_id) if excluir_id is not None else None
+
+        return any(
+            producto["sku"].strip().lower() == sku
+            and int(producto["id"]) != excluir_id
+            for producto in productos
         )
