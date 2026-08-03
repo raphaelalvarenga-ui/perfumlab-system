@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from typing import Optional
 
+from app.validaciones import validar_texto_opcional, validar_texto_requerido
+
 
 @dataclass
 class Categoria:
@@ -19,5 +21,15 @@ class Categoria:
         )
 
     def validar(self):
-        if not self.nombre.strip():
-            raise ValueError("El nombre de la categoria es obligatorio.")
+        self.nombre = validar_texto_requerido(
+            self.nombre,
+            "nombre de la categoria",
+            minimo=2,
+            maximo=80,
+            requiere_letra=True,
+        )
+        self.descripcion = validar_texto_opcional(
+            self.descripcion,
+            "descripcion de la categoria",
+            maximo=250,
+        )

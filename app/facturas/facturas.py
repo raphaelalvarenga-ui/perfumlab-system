@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
 from app.database.json_storage import (
+    DATABASE_PATH,
     buscar_por_id,
     cargar_todo,
     fecha_actual,
@@ -10,15 +11,22 @@ from app.database.json_storage import (
     siguiente_id,
 )
 from app.ui_theme import aplicar_tema, configurar_tabla, crear_encabezado
+from app.validaciones import validar_id_positivo, validar_ruta_exportacion
 
 
-def crear_tabla_facturas():
-    inicializar_datos_json()
+def crear_tabla_facturas(ruta_db=DATABASE_PATH):
+    inicializar_datos_json(ruta_db)
 
 
-def generar_factura(venta_id):
-    inicializar_datos_json()
-    datos = cargar_todo()
+def generar_factura(venta_id, ruta_db=DATABASE_PATH):
+    inicializar_datos_json(ruta_db)
+
+    try:
+        venta_id = validar_id_positivo(venta_id, "venta")
+    except ValueError as error:
+        return False, str(error)
+
+    datos = cargar_todo(ruta_db)
     venta = buscar_por_id(datos["ventas"], venta_id)
 
     if venta is None:
@@ -42,32 +50,47 @@ def generar_factura(venta_id):
             "total": float(venta["total"]),
         }
     )
-    guardar_todo({"facturas": datos["facturas"]})
+    guardar_todo({"facturas": datos["facturas"]}, ruta_db)
 
     return True, f"Factura {numero_factura} generada correctamente."
 
 
-def obtener_facturas():
-    datos = cargar_todo()
+def obtener_facturas(ruta_db=DATABASE_PATH):
+    datos = cargar_todo(ruta_db)
     facturas = [_armar_factura(factura, datos) for factura in datos["facturas"]]
     facturas.sort(key=lambda factura: int(factura["id"]), reverse=True)
     return facturas
 
 
-def obtener_factura_por_id(factura_id):
-    datos = cargar_todo()
+def obtener_factura_por_id(factura_id, ruta_db=DATABASE_PATH):
+    try:
+        factura_id = validar_id_positivo(factura_id, "factura")
+    except ValueError:
+        return None
+
+    datos = cargar_todo(ruta_db)
     factura = buscar_por_id(datos["facturas"], factura_id)
     return _armar_factura(factura, datos) if factura else None
 
 
-def obtener_factura_por_venta_id(venta_id):
-    datos = cargar_todo()
+def obtener_factura_por_venta_id(venta_id, ruta_db=DATABASE_PATH):
+    try:
+        venta_id = validar_id_positivo(venta_id, "venta")
+    except ValueError:
+        return None
+
+    datos = cargar_todo(ruta_db)
     factura = _factura_por_venta(datos["facturas"], venta_id)
     return _armar_factura(factura, datos) if factura else None
 
 
-def obtener_detalle_factura(factura_id):
-    datos = cargar_todo()
+def obtener_detalle_factura(factura_id, ruta_db=DATABASE_PATH):
+    try:
+        factura_id = validar_id_positivo(factura_id, "factura")
+    except ValueError:
+        return []
+
+    datos = cargar_todo(ruta_db)
     factura = buscar_por_id(datos["facturas"], factura_id)
 
     if factura is None:
@@ -90,8 +113,8 @@ def obtener_detalle_factura(factura_id):
     ]
 
 
-def obtener_ventas_para_facturar():
-    datos = cargar_todo()
+def obtener_ventas_para_facturar(ruta_db=DATABASE_PATH):
+    datos = cargar_todo(ruta_db)
     ventas_con_factura = {
         int(factura["venta_id"])
         for factura in datos["facturas"]
@@ -153,12 +176,13 @@ def _nombre_producto(productos, producto_id):
     return producto["nombre"] if producto else f"Producto ID {producto_id}"
 
 
-def generar_texto_factura(factura_id):
-    factura = obtener_factura_por_id(factura_id)
+def generar_texto_factura(factura_id, ruta_db=DATABASE_PATH):
+    factura_id = validar_id_positivo(factura_id, "factura")
+    factura = obtener_factura_por_id(factura_id, ruta_db)
     if factura is None:
         raise ValueError("La factura no existe.")
 
-    detalles = obtener_detalle_factura(factura_id)
+    detalles = obtener_detalle_factura(factura_id, ruta_db)
     cliente = factura["cliente"] or "Sin cliente"
     lineas = [
         "PERFUM LAB",
@@ -193,19 +217,29 @@ def generar_texto_factura(factura_id):
     return "\n".join(lineas)
 
 
-def exportar_factura_txt(factura_id, ruta_archivo):
-    texto = generar_texto_factura(factura_id)
+def exportar_factura_txt(factura_id, ruta_archivo, ruta_db=DATABASE_PATH):
+    ruta_archivo = validar_ruta_exportacion(
+        ruta_archivo,
+        ".txt",
+        "la factura TXT",
+    )
+    texto = generar_texto_factura(factura_id, ruta_db)
 
     with open(ruta_archivo, "w", encoding="utf-8") as archivo:
         archivo.write(texto)
 
 
-def exportar_factura_pdf(factura_id, ruta_archivo):
-    factura = obtener_factura_por_id(factura_id)
+def exportar_factura_pdf(factura_id, ruta_archivo, ruta_db=DATABASE_PATH):
+    ruta_archivo = validar_ruta_exportacion(
+        ruta_archivo,
+        ".pdf",
+        "la factura PDF",
+    )
+    factura = obtener_factura_por_id(factura_id, ruta_db)
     if factura is None:
         raise ValueError("La factura no existe.")
 
-    detalles = obtener_detalle_factura(factura_id)
+    detalles = obtener_detalle_factura(factura_id, ruta_db)
     cliente = factura["cliente"] or "Sin cliente"
     comandos = []
 

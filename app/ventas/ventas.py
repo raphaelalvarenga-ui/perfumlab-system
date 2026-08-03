@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from app.database.json_storage import (
+    DATABASE_PATH,
     buscar_por_id,
     cargar_tabla,
     cargar_todo,
@@ -12,13 +13,18 @@ from app.database.json_storage import (
     siguiente_id,
 )
 from app.ui_theme import aplicar_tema, configurar_tabla, crear_encabezado
+from app.validaciones import (
+    validar_entero_positivo,
+    validar_id_positivo,
+    validar_nombre_cliente,
+)
 
 
-def crear_tabla_ventas():
-    inicializar_datos_json()
+def crear_tabla_ventas(ruta_db=DATABASE_PATH):
+    inicializar_datos_json(ruta_db)
 
 
-def obtener_productos_para_venta():
+def obtener_productos_para_venta(ruta_db=DATABASE_PATH):
     productos = [
         {
             "id": producto["id"],
@@ -27,28 +33,28 @@ def obtener_productos_para_venta():
             "precio": float(producto["precio"]),
             "stock_actual": int(producto["stock_actual"]),
         }
-        for producto in cargar_tabla("productos")
+        for producto in cargar_tabla("productos", ruta_db)
         if es_activo(producto)
     ]
     productos.sort(key=lambda producto: producto["nombre"].lower())
     return productos
 
 
-def registrar_venta(producto_id, cliente, cantidad, usuario_id=1):
+def registrar_venta(producto_id, cliente, cantidad, usuario_id=1, ruta_db=DATABASE_PATH):
     return registrar_venta_multiple(
         cliente,
         [{"producto_id": producto_id, "cantidad": cantidad}],
         usuario_id=usuario_id,
+        ruta_db=ruta_db,
     )
 
 
-def registrar_venta_multiple(cliente, items, usuario_id=1):
-    inicializar_datos_json()
-
-    if not cliente.strip():
-        return False, "El nombre del cliente es obligatorio."
+def registrar_venta_multiple(cliente, items, usuario_id=1, ruta_db=DATABASE_PATH):
+    inicializar_datos_json(ruta_db)
 
     try:
+        cliente = validar_nombre_cliente(cliente)
+        usuario_id = validar_id_positivo(usuario_id, "usuario")
         items_normalizados = _normalizar_items(items)
     except ValueError as error:
         return False, str(error)
@@ -56,7 +62,7 @@ def registrar_venta_multiple(cliente, items, usuario_id=1):
     if not items_normalizados:
         return False, "Debe agregar al menos un producto a la venta."
 
-    datos = cargar_todo()
+    datos = cargar_todo(ruta_db)
     productos = _obtener_productos_por_id(
         datos["productos"],
         [item["producto_id"] for item in items_normalizados],
@@ -101,7 +107,7 @@ def registrar_venta_multiple(cliente, items, usuario_id=1):
         {
             "id": venta_id,
             "cliente_id": cliente_id,
-            "usuario_id": usuario_id,
+                "usuario_id": usuario_id,
             "fecha": fecha_actual(),
             "total": float(total),
             "estado": "Completada",
@@ -153,15 +159,22 @@ def registrar_venta_multiple(cliente, items, usuario_id=1):
             "detalle_venta": datos["detalle_venta"],
             "productos": datos["productos"],
             "movimientos_inventario": datos["movimientos_inventario"],
-        }
+        },
+        ruta_db,
     )
 
     return True, f"Venta #{venta_id} registrada correctamente. Total: L {total:.2f}"
 
 
-def anular_venta(venta_id):
-    inicializar_datos_json()
-    datos = cargar_todo()
+def anular_venta(venta_id, ruta_db=DATABASE_PATH):
+    inicializar_datos_json(ruta_db)
+
+    try:
+        venta_id = validar_id_positivo(venta_id, "venta")
+    except ValueError as error:
+        return False, str(error)
+
+    datos = cargar_todo(ruta_db)
     venta = buscar_por_id(datos["ventas"], venta_id)
 
     if venta is None:
@@ -228,14 +241,15 @@ def anular_venta(venta_id):
             "ventas": datos["ventas"],
             "productos": datos["productos"],
             "movimientos_inventario": datos["movimientos_inventario"],
-        }
+        },
+        ruta_db,
     )
 
     return True, f"Venta #{venta_id} anulada correctamente. Stock devuelto."
 
 
-def obtener_ventas():
-    datos = cargar_todo()
+def obtener_ventas(ruta_db=DATABASE_PATH):
+    datos = cargar_todo(ruta_db)
     ventas = [
         _armar_resumen_venta(venta, datos)
         for venta in datos["ventas"]
@@ -245,8 +259,8 @@ def obtener_ventas():
     return ventas
 
 
-def obtener_detalle_venta(venta_id):
-    datos = cargar_todo()
+def obtener_detalle_venta(venta_id, ruta_db=DATABASE_PATH):
+    datos = cargar_todo(ruta_db)
     detalles = _detalles_de_venta(datos["detalle_venta"], venta_id)
     detalles.sort(key=lambda detalle: int(detalle["id"]))
     return [
@@ -262,8 +276,8 @@ def obtener_detalle_venta(venta_id):
     ]
 
 
-def buscar_venta_por_id(venta_id):
-    datos = cargar_todo()
+def buscar_venta_por_id(venta_id, ruta_db=DATABASE_PATH):
+    datos = cargar_todo(ruta_db)
     venta = buscar_por_id(datos["ventas"], venta_id)
 
     if venta is None:
@@ -637,17 +651,20 @@ def abrir_ventas(ventana=None):
 
 
 def _normalizar_items(items):
+    if not items:
+        return []
+
     cantidades_por_producto = {}
 
     for item in items:
         try:
-            producto_id = int(item["producto_id"])
-            cantidad = int(item["cantidad"])
-        except (KeyError, TypeError, ValueError) as error:
+            producto_id = item["producto_id"]
+            cantidad = item["cantidad"]
+        except (KeyError, TypeError) as error:
             raise ValueError("Los productos de la venta no son validos.") from error
 
-        if cantidad <= 0:
-            raise ValueError("Todas las cantidades deben ser mayores que cero.")
+        producto_id = validar_id_positivo(producto_id, "producto")
+        cantidad = validar_entero_positivo(cantidad, "La cantidad")
 
         cantidades_por_producto[producto_id] = (
             cantidades_por_producto.get(producto_id, 0) + cantidad
@@ -672,7 +689,7 @@ def _obtener_productos_por_id(productos_disponibles, producto_ids):
 
 
 def _obtener_o_crear_cliente(clientes, nombre):
-    nombre = nombre.strip()
+    nombre = validar_nombre_cliente(nombre)
     cliente = next(
         (
             cliente

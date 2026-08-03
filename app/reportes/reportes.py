@@ -2,13 +2,25 @@ import csv
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
-from app.database.json_storage import buscar_por_id, cargar_todo, es_activo, inicializar_datos_json
+from app.database.json_storage import (
+    DATABASE_PATH,
+    buscar_por_id,
+    cargar_todo,
+    es_activo,
+    inicializar_datos_json,
+)
 from app.ui_theme import aplicar_tema, configurar_tabla, crear_encabezado
+from app.validaciones import (
+    validar_fecha_iso,
+    validar_rango_fechas,
+    validar_ruta_exportacion,
+)
 
 
-def obtener_resumen_reportes(fecha_inicio=None, fecha_fin=None):
-    inicializar_datos_json()
-    datos = cargar_todo()
+def obtener_resumen_reportes(fecha_inicio=None, fecha_fin=None, ruta_db=DATABASE_PATH):
+    inicializar_datos_json(ruta_db)
+    fecha_inicio, fecha_fin = validar_rango_fechas(fecha_inicio, fecha_fin)
+    datos = cargar_todo(ruta_db)
     ventas_completadas = [
         venta
         for venta in datos["ventas"]
@@ -37,8 +49,8 @@ def obtener_resumen_reportes(fecha_inicio=None, fecha_fin=None):
     }
 
 
-def obtener_productos_bajo_stock():
-    datos = cargar_todo()
+def obtener_productos_bajo_stock(ruta_db=DATABASE_PATH):
+    datos = cargar_todo(ruta_db)
     productos = [
         {
             "id": producto["id"],
@@ -55,8 +67,13 @@ def obtener_productos_bajo_stock():
     return productos
 
 
-def obtener_productos_mas_vendidos(fecha_inicio=None, fecha_fin=None):
-    datos = cargar_todo()
+def obtener_productos_mas_vendidos(
+    fecha_inicio=None,
+    fecha_fin=None,
+    ruta_db=DATABASE_PATH,
+):
+    fecha_inicio, fecha_fin = validar_rango_fechas(fecha_inicio, fecha_fin)
+    datos = cargar_todo(ruta_db)
     ventas_validas = {
         int(venta["id"])
         for venta in datos["ventas"]
@@ -97,8 +114,9 @@ def obtener_productos_mas_vendidos(fecha_inicio=None, fecha_fin=None):
     return productos
 
 
-def obtener_ventas_recientes(fecha_inicio=None, fecha_fin=None):
-    datos = cargar_todo()
+def obtener_ventas_recientes(fecha_inicio=None, fecha_fin=None, ruta_db=DATABASE_PATH):
+    fecha_inicio, fecha_fin = validar_rango_fechas(fecha_inicio, fecha_fin)
+    datos = cargar_todo(ruta_db)
     ventas = [
         {
             "id": venta["id"],
@@ -115,6 +133,13 @@ def obtener_ventas_recientes(fecha_inicio=None, fecha_fin=None):
 
 
 def exportar_csv(ruta_archivo, filas, columnas, encabezados):
+    ruta_archivo = validar_ruta_exportacion(
+        ruta_archivo,
+        ".csv",
+        "el reporte CSV",
+    )
+    _validar_estructura_csv(filas, columnas, encabezados)
+
     with open(ruta_archivo, "w", newline="", encoding="utf-8") as archivo:
         escritor = csv.writer(archivo)
         escritor.writerow([encabezados[columna] for columna in columnas])
@@ -408,7 +433,7 @@ def _cargar_tabla(tabla, filas, columnas, moneda=None):
 
 
 def _fecha_en_rango(fecha, fecha_inicio=None, fecha_fin=None):
-    fecha = str(fecha or "")[:10]
+    fecha = validar_fecha_iso(str(fecha or "")[:10], "fecha del registro")
 
     if fecha_inicio and fecha < fecha_inicio:
         return False
@@ -417,6 +442,26 @@ def _fecha_en_rango(fecha, fecha_inicio=None, fecha_fin=None):
         return False
 
     return True
+
+
+def _validar_estructura_csv(filas, columnas, encabezados):
+    if not columnas:
+        raise ValueError("Debe indicar al menos una columna para exportar.")
+
+    columnas_faltantes = [columna for columna in columnas if columna not in encabezados]
+    if columnas_faltantes:
+        raise ValueError(
+            "Faltan encabezados para estas columnas: "
+            + ", ".join(columnas_faltantes)
+        )
+
+    for indice, fila in enumerate(filas, start=1):
+        faltantes = [columna for columna in columnas if columna not in fila]
+        if faltantes:
+            raise ValueError(
+                f"La fila {indice} no contiene estas columnas: "
+                + ", ".join(faltantes)
+            )
 
 
 def _nombre_cliente(clientes, cliente_id):

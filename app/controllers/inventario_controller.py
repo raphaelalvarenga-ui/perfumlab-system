@@ -8,6 +8,12 @@ from app.database.json_storage import (
     inicializar_datos_json,
     siguiente_id,
 )
+from app.validaciones import (
+    validar_entero_no_negativo,
+    validar_entero_positivo,
+    validar_id_positivo,
+    validar_texto_opcional,
+)
 
 
 class InventarioController:
@@ -16,7 +22,9 @@ class InventarioController:
         inicializar_datos_json(self.ruta_datos)
 
     def registrar_entrada(self, producto_id, cantidad, motivo):
-        self._validar_cantidad(cantidad)
+        producto_id = validar_id_positivo(producto_id, "producto")
+        cantidad = validar_entero_positivo(cantidad, "La cantidad")
+        motivo = validar_texto_opcional(motivo, "motivo", maximo=160)
         datos = cargar_todo(self.ruta_datos)
         producto = self._obtener_producto(datos["productos"], producto_id)
         stock_anterior = int(producto["stock_actual"])
@@ -41,7 +49,9 @@ class InventarioController:
         return movimiento_id
 
     def registrar_salida(self, producto_id, cantidad, motivo):
-        self._validar_cantidad(cantidad)
+        producto_id = validar_id_positivo(producto_id, "producto")
+        cantidad = validar_entero_positivo(cantidad, "La cantidad")
+        motivo = validar_texto_opcional(motivo, "motivo", maximo=160)
         datos = cargar_todo(self.ruta_datos)
         producto = self._obtener_producto(datos["productos"], producto_id)
         stock_anterior = int(producto["stock_actual"])
@@ -69,8 +79,9 @@ class InventarioController:
         return movimiento_id
 
     def registrar_ajuste(self, producto_id, nuevo_stock, motivo):
-        if nuevo_stock < 0:
-            raise ValueError("El nuevo stock no puede ser negativo.")
+        producto_id = validar_id_positivo(producto_id, "producto")
+        nuevo_stock = validar_entero_no_negativo(nuevo_stock, "El nuevo stock")
+        motivo = validar_texto_opcional(motivo, "motivo", maximo=160)
 
         datos = cargar_todo(self.ruta_datos)
         producto = self._obtener_producto(datos["productos"], producto_id)
@@ -118,11 +129,8 @@ class InventarioController:
         )
         return movimientos
 
-    def _validar_cantidad(self, cantidad):
-        if cantidad <= 0:
-            raise ValueError("La cantidad debe ser mayor que cero.")
-
     def _obtener_producto(self, productos, producto_id):
+        producto_id = validar_id_positivo(producto_id, "producto")
         producto = buscar_por_id(productos, producto_id)
 
         if producto is None:

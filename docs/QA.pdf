@@ -1,0 +1,1434 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [7 0 R 9 0 R 11 0 R 13 0 R 15 0 R 17 0 R 19 0 R 21 0 R 23 0 R] /Count 9 >>
+endobj
+3 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+4 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+6 0 obj
+<< /Length 2930 >>
+stream
+0 0 0 rg
+BT
+/F2 18 Tf
+48 738.00 Td (Informe de QA - Perfum Lab System) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 692.00 Td (Proyecto: Perfum Lab System) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 678.00 Td (Fecha: 3 de agosto de 2026) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 664.00 Td (Tipo de documento: README tecnico de pruebas QA) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 650.00 Td (Modulo evaluado: Productos, inventario, ventas, facturas y reportes) Tj
+ET
+0 0 0 rg
+BT
+/F2 15 Tf
+48 586.00 Td (Resumen ejecutivo) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 546.00 Td (Se implemento una base de pruebas automatizadas para validar los flujos principales del sistema) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 534.00 Td (Perfum Lab sin modificar los datos reales del negocio.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 504.00 Td (El trabajo de QA se centro en verificar que las operaciones criticas funcionen correctamente:) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 474.00 Td (- Gestion de productos.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 461.00 Td (- Movimientos de inventario.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 448.00 Td (- Registro de ventas simples y multiples.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 435.00 Td (- Validaciones de stock.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 422.00 Td (- Anulacion de ventas.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 409.00 Td (- Generacion de facturas.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 396.00 Td (- Exportacion de facturas en TXT y PDF.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 383.00 Td (- Reportes operativos.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 354.00 Td (Las pruebas se ejecutan sobre una base JSON temporal creada durante cada corrida. Esto permite) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 342.00 Td (probar el sistema de forma segura, repetible y sin contaminar los archivos reales ubicados en) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 330.00 Td (database/json/.) Tj
+ET
+0 0 0 rg
+BT
+/F2 15 Tf
+48 266.00 Td (Objetivo del QA) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 226.00 Td (El objetivo fue crear una forma confiable de validar automaticamente que el sistema mantenga la) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 214.00 Td (integridad de los datos cuando se realizan operaciones comerciales importantes.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 184.00 Td (En particular, se busco comprobar que:) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 154.00 Td (- Una venta descuente correctamente el inventario.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 141.00 Td (- Una anulacion devuelva correctamente el stock.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 128.00 Td (- Una venta facturada no pueda ser anulada.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 115.00 Td (- Una venta anulada no pueda ser facturada.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 102.00 Td (- Las ventas invalidas no creen registros ni modifiquen inventario.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 89.00 Td (- Las facturas puedan consultarse y exportarse.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 76.00 Td (- Los reportes reflejen correctamente ventas, facturas y productos con bajo stock.) Tj
+ET
+0.45 0.45 0.45 rg
+BT
+/F1 8 Tf
+48 28 Td (Perfum Lab QA - pagina 1 de 9) Tj
+ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 6 0 R >>
+endobj
+8 0 obj
+<< /Length 2431 >>
+stream
+0 0 0 rg
+BT
+/F2 15 Tf
+48 704.00 Td (Archivos trabajados) Tj
+ET
+0 0 0 rg
+BT
+/F2 13 Tf
+48 664.00 Td (Archivos modificados) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 628.00 Td (Archivo | Proposito) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 616.50 Td (`app/ventas/ventas.py` | Se agrego soporte para ejecutar funciones contra una ruta de datos) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 606.00 Td (temporal mediante `ruta_db`.) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 594.50 Td (`app/facturas/facturas.py` | Se agrego soporte para generar, consultar y exportar facturas usando) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 584.00 Td (una base JSON temporal.) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 572.50 Td (`app/reportes/reportes.py` | Se agrego soporte para consultar reportes desde una ruta JSON) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 562.00 Td (temporal.) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 550.50 Td (`probar_ventas_facturas.py` | Se completo como prueba rapida tipo smoke test para ventas, facturas,) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 540.00 Td (PDF y reportes.) Tj
+ET
+0 0 0 rg
+BT
+/F2 13 Tf
+48 512.50 Td (Archivos agregados) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 476.50 Td (Archivo | Proposito) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 465.00 Td (`tests/test_qa_core.py` | Suite automatizada de QA con pruebas unitarias e integradas usando) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 454.50 Td (`unittest`.) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 443.00 Td (`docs/README_QA.md` | Documento de QA listo para exportar a PDF.) Tj
+ET
+0 0 0 rg
+BT
+/F2 15 Tf
+48 381.50 Td (Enfoque tecnico) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 341.50 Td (Antes del QA, varias funciones de ventas, facturas y reportes usaban directamente la base JSON) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 329.50 Td (real del proyecto.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 299.50 Td (Para probar sin riesgo, se agrego el parametro opcional:) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 269.50 Td (ruta_db=DATABASE_PATH) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 242.00 Td (Esto permite dos modos de uso:) Tj
+ET
+0 0 0 rg
+BT
+/F2 13 Tf
+48 212.00 Td (Modo normal de la aplicacion) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 176.00 Td (La aplicacion sigue funcionando igual, usando los datos reales:) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 146.00 Td (ventas.registrar_venta\(1, "Cliente", 2\)) Tj
+ET
+0 0 0 rg
+BT
+/F2 13 Tf
+48 118.50 Td (Modo QA con datos temporales) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 82.50 Td (Las pruebas pueden usar una carpeta temporal:) Tj
+ET
+0.45 0.45 0.45 rg
+BT
+/F1 8 Tf
+48 28 Td (Perfum Lab QA - pagina 2 de 9) Tj
+ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 8 0 R >>
+endobj
+10 0 obj
+<< /Length 2259 >>
+stream
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 738.00 Td (ventas.registrar_venta\(1, "Cliente QA", 2, ruta_db=ruta_temporal\)) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 710.50 Td (De esta forma, cada prueba crea sus propios archivos JSON, ejecuta el flujo necesario y elimina) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 698.50 Td (esos datos al finalizar.) Tj
+ET
+0 0 0 rg
+BT
+/F2 15 Tf
+48 634.50 Td (Pruebas automatizadas implementadas) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 594.50 Td (La suite principal se encuentra en:) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 564.50 Td (tests/test_qa_core.py) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 537.00 Td (Se implementaron 7 pruebas automatizadas.) Tj
+ET
+0 0 0 rg
+BT
+/F2 13 Tf
+48 507.00 Td (5.1 Productos e inventario) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 471.00 Td (Prueba:) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 441.00 Td (test_productos_e_inventario_crud_y_movimientos) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 413.50 Td (Valida:) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 383.50 Td (- Crear producto.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 370.50 Td (- Rechazar SKU duplicado.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 357.50 Td (- Buscar producto por texto.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 344.50 Td (- Registrar entrada de inventario.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 331.50 Td (- Registrar salida de inventario.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 318.50 Td (- Rechazar salida mayor al stock disponible.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 305.50 Td (- Registrar ajuste de inventario.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 292.50 Td (- Consultar movimientos.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 279.50 Td (- Desactivar producto.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 250.50 Td (Resultado esperado:) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 220.50 Td (- El stock cambia correctamente en cada movimiento.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 207.50 Td (- Los movimientos quedan registrados con tipo, cantidad, stock anterior y stock nuevo.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 194.50 Td (- El producto desactivado ya no aparece en el listado de activos.) Tj
+ET
+0 0 0 rg
+BT
+/F2 13 Tf
+48 131.50 Td (5.2 Venta multiple, factura y exportaciones) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 95.50 Td (Prueba:) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 65.50 Td (test_venta_multiple_factura_exports_y_bloqueo_de_anulacion) Tj
+ET
+0.45 0.45 0.45 rg
+BT
+/F1 8 Tf
+48 28 Td (Perfum Lab QA - pagina 3 de 9) Tj
+ET
+endstream
+endobj
+11 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 10 0 R >>
+endobj
+12 0 obj
+<< /Length 2362 >>
+stream
+0 0 0 rg
+BT
+/F1 10 Tf
+48 722.00 Td (Valida:) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 692.00 Td (- Registrar venta con mas de un producto.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 679.00 Td (- Calcular cantidad total de la venta.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 666.00 Td (- Calcular total monetario.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 653.00 Td (- Descontar inventario de cada producto vendido.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 640.00 Td (- Consultar detalle de venta.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 627.00 Td (- Generar factura.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 614.00 Td (- Evitar factura duplicada.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 601.00 Td (- Evitar anulacion de venta facturada.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 588.00 Td (- Generar texto de factura.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 575.00 Td (- Exportar factura TXT.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 562.00 Td (- Exportar factura PDF.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 533.00 Td (Resultado esperado:) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 503.00 Td (- La venta queda en estado Completada.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 490.00 Td (- La factura queda con numero FAC-000001.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 477.00 Td (- El PDF generado inicia con cabecera valida %PDF-.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 464.00 Td (- Una venta facturada no puede anularse.) Tj
+ET
+0 0 0 rg
+BT
+/F2 13 Tf
+48 401.00 Td (5.3 Anulacion de venta) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 365.00 Td (Prueba:) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 335.00 Td (test_anular_venta_devuelve_stock_y_excluye_facturacion) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 307.50 Td (Valida:) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 277.50 Td (- Registrar una venta.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 264.50 Td (- Descontar stock.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 251.50 Td (- Anular la venta.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 238.50 Td (- Devolver stock al producto.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 225.50 Td (- Cambiar estado de la venta a Anulada.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 212.50 Td (- Evitar facturar una venta anulada.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 183.50 Td (Resultado esperado:) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 153.50 Td (- El stock vuelve al valor inicial.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 140.50 Td (- La venta queda anulada.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 127.50 Td (- El sistema rechaza la facturacion de ventas anuladas.) Tj
+ET
+0.45 0.45 0.45 rg
+BT
+/F1 8 Tf
+48 28 Td (Perfum Lab QA - pagina 4 de 9) Tj
+ET
+endstream
+endobj
+13 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 12 0 R >>
+endobj
+14 0 obj
+<< /Length 2810 >>
+stream
+0 0 0 rg
+BT
+/F2 13 Tf
+48 738.00 Td (5.4 Validaciones de ventas invalidas) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 702.00 Td (Prueba:) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 672.00 Td (test_validaciones_de_venta_no_modifican_datos) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 644.50 Td (Valida:) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 614.50 Td (- Rechazar venta sin cliente.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 601.50 Td (- Rechazar venta con cantidad cero.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 588.50 Td (- Rechazar venta con cantidad mayor al stock disponible.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 575.50 Td (- Confirmar que no se creen ventas invalidas.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 562.50 Td (- Confirmar que no se creen movimientos de inventario invalidos.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 549.50 Td (- Confirmar que el stock no cambie.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 520.50 Td (Resultado esperado:) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 490.50 Td (- Todas las ventas invalidas fallan.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 477.50 Td (- No se alteran ventas, movimientos ni inventario.) Tj
+ET
+0 0 0 rg
+BT
+/F2 13 Tf
+48 414.50 Td (5.5 Validaciones de formato y campos requeridos) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 378.50 Td (Prueba:) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 348.50 Td (test_validaciones_de_formato_y_campos_requeridos) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 321.00 Td (Valida:) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 291.00 Td (- Rechazar SKU demasiado corto.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 278.00 Td (- Rechazar SKU con espacios.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 265.00 Td (- Rechazar producto sin nombre valido.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 252.00 Td (- Rechazar precios no finitos.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 239.00 Td (- Rechazar categoria sin nombre valido.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 226.00 Td (- Rechazar ventas con ID de producto invalido.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 213.00 Td (- Rechazar ventas con cliente sin letras.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 200.00 Td (- Rechazar cantidades decimales en ventas.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 187.00 Td (- Rechazar facturas con ID de venta invalido.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 174.00 Td (- Rechazar fechas con formato incorrecto.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 161.00 Td (- Rechazar rangos donde la fecha inicial sea mayor que la fecha final.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 148.00 Td (- Rechazar exportaciones con extension incorrecta.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 119.00 Td (Resultado esperado:) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 89.00 Td (- Los datos incompletos o con formato incorrecto no ingresan al sistema.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 76.00 Td (- Los mensajes de error indican el campo que debe corregirse.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 63.00 Td (- Las exportaciones respetan el tipo de archivo esperado.) Tj
+ET
+0.45 0.45 0.45 rg
+BT
+/F1 8 Tf
+48 28 Td (Perfum Lab QA - pagina 5 de 9) Tj
+ET
+endstream
+endobj
+15 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 14 0 R >>
+endobj
+16 0 obj
+<< /Length 2209 >>
+stream
+0 0 0 rg
+BT
+/F2 13 Tf
+48 688.00 Td (5.6 Agrupacion de productos repetidos) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 652.00 Td (Prueba:) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 622.00 Td (test_items_repetidos_se_agrupan_en_una_sola_linea) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 594.50 Td (Valida:) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 564.50 Td (- Registrar venta con el mismo producto repetido en el carrito.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 551.50 Td (- Agrupar cantidades en una sola linea de detalle.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 538.50 Td (- Calcular subtotal correcto.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 525.50 Td (- Descontar stock segun la suma total.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 496.50 Td (Resultado esperado:) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 466.50 Td (- El detalle de venta contiene una sola linea.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 453.50 Td (- La cantidad corresponde a la suma de los items repetidos.) Tj
+ET
+0 0 0 rg
+BT
+/F2 13 Tf
+48 390.50 Td (5.7 Reportes) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 354.50 Td (Prueba:) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 324.50 Td (test_reportes_resumen_productos_mas_vendidos_y_csv) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 297.00 Td (Valida:) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 267.00 Td (- Resumen de ventas completadas.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 254.00 Td (- Total vendido.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 241.00 Td (- Cantidad de facturas.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 228.00 Td (- Total facturado.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 215.00 Td (- Productos con bajo stock.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 202.00 Td (- Productos mas vendidos.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 189.00 Td (- Ventas recientes.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 176.00 Td (- Filtro por rango de fechas.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 163.00 Td (- Exportacion CSV.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 134.00 Td (Resultado esperado:) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 104.00 Td (- Solo las ventas completadas cuentan para el resumen principal.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 91.00 Td (- Las ventas anuladas aparecen en ventas recientes, pero no suman al total vendido.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 78.00 Td (- El CSV contiene encabezados y datos esperados.) Tj
+ET
+0.45 0.45 0.45 rg
+BT
+/F1 8 Tf
+48 28 Td (Perfum Lab QA - pagina 6 de 9) Tj
+ET
+endstream
+endobj
+17 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 16 0 R >>
+endobj
+18 0 obj
+<< /Length 1785 >>
+stream
+0 0 0 rg
+BT
+/F2 15 Tf
+48 704.00 Td (Smoke test) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 664.00 Td (Tambien se completo el archivo:) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 634.00 Td (probar_ventas_facturas.py) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 606.50 Td (Este script ejecuta una prueba rapida de extremo a extremo:) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 576.50 Td (1. Crea una base JSON temporal.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 562.50 Td (2. Registra una venta multiple.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 548.50 Td (3. Genera una factura.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 534.50 Td (4. Exporta la factura PDF.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 520.50 Td (5. Consulta resumen de reportes.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 506.50 Td (6. Imprime resultado final.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 476.50 Td (Comando:) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 446.50 Td (uv run python probar_ventas_facturas.py) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 419.00 Td (Salida esperada:) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 389.00 Td (QA smoke OK) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 377.50 Td (Venta generada: #1 | Total: L 2480.00) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 366.00 Td (Factura generada: FAC-000001) Tj
+ET
+0 0 0 rg
+BT
+/F2 15 Tf
+48 304.50 Td (Como ejecutar las pruebas) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 264.50 Td (Desde la raiz del proyecto:) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 234.50 Td (cd C:\\Users\\yesid\\OneDrive\\Escritorio\\perfumelabsystem\\perfumlab-system) Tj
+ET
+0 0 0 rg
+BT
+/F2 13 Tf
+48 207.00 Td (Ejecutar prueba rapida) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 171.00 Td (uv run python probar_ventas_facturas.py) Tj
+ET
+0 0 0 rg
+BT
+/F2 13 Tf
+48 143.50 Td (Ejecutar suite completa) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 107.50 Td (uv run python -m unittest discover -s tests) Tj
+ET
+0.45 0.45 0.45 rg
+BT
+/F1 8 Tf
+48 28 Td (Perfum Lab QA - pagina 7 de 9) Tj
+ET
+endstream
+endobj
+19 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 18 0 R >>
+endobj
+20 0 obj
+<< /Length 3221 >>
+stream
+0 0 0 rg
+BT
+/F2 15 Tf
+48 738.00 Td (Resultado obtenido) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 698.00 Td (La suite completa fue ejecutada correctamente.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 668.00 Td (Resultado:) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 638.00 Td (......) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 626.50 Td (----------------------------------------------------------------------) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 615.00 Td (Ran 7 tests in 1.295s) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 592.00 Td (OK) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 564.50 Td (Interpretacion:) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 534.50 Td (- 7 tests ejecutados.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 521.50 Td (- 0 errores.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 508.50 Td (- 0 fallos.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 495.50 Td (- Los flujos principales evaluados pasaron correctamente.) Tj
+ET
+0 0 0 rg
+BT
+/F2 15 Tf
+48 432.50 Td (Matriz de cobertura) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 392.50 Td (Area | Cubierto | Evidencia) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 381.00 Td (Productos | Si | Crear, buscar, duplicado SKU, desactivar.) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 369.50 Td (Inventario | Si | Entrada, salida, ajuste, stock insuficiente.) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 358.00 Td (Ventas | Si | Venta simple, venta multiple, items repetidos.) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 346.50 Td (Validaciones de venta | Si | Cliente vacio, cantidad cero, stock insuficiente.) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 335.00 Td (Validaciones de formato | Si | SKU, cliente, IDs, fechas, numeros y extensiones.) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 323.50 Td (Anulaciones | Si | Devolucion de stock y estado `Anulada`.) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 312.00 Td (Facturas | Si | Generacion, consulta y bloqueo de duplicados.) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 300.50 Td (Exportacion TXT | Si | Archivo generado con datos del cliente.) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 289.00 Td (Exportacion PDF | Si | Archivo generado con cabecera `%PDF-`.) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 277.50 Td (Reportes | Si | Resumen, bajo stock, mas vendidos, ventas recientes.) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 266.00 Td (Exportacion CSV | Si | Archivo CSV con encabezados y datos.) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 254.50 Td (Interfaz grafica Tkinter | Parcial | No se automatizaron clics visuales en ventanas.) Tj
+ET
+0 0 0 rg
+BT
+/F2 15 Tf
+48 193.00 Td (Riesgos y pendientes) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 153.00 Td (Aunque las pruebas cubren la logica principal, quedan pendientes recomendados para una fase) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 141.00 Td (posterior:) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 111.00 Td (- Automatizar pruebas visuales de la interfaz Tkinter.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 98.00 Td (- Probar flujos manuales con usuario final: abrir modulos, llenar formularios y validar mensajes.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 85.00 Td (- Agregar pruebas para archivos JSON corruptos o con estructura invalida.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 72.00 Td (- Validar comportamiento con grandes volumenes de productos y ventas.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 59.00 Td (- Agregar pruebas de regresion cuando se modifiquen precios, categorias o estructura de factura.) Tj
+ET
+0.45 0.45 0.45 rg
+BT
+/F1 8 Tf
+48 28 Td (Perfum Lab QA - pagina 8 de 9) Tj
+ET
+endstream
+endobj
+21 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 20 0 R >>
+endobj
+22 0 obj
+<< /Length 1858 >>
+stream
+0 0 0 rg
+BT
+/F2 15 Tf
+48 688.00 Td (Guia rapida para exportar este Markdown a PDF) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 648.00 Td (Este archivo puede exportarse a PDF de varias formas.) Tj
+ET
+0 0 0 rg
+BT
+/F2 13 Tf
+48 618.00 Td (Opcion 1: Visual Studio Code) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 582.00 Td (1. Abrir docs/README_QA.md.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 568.00 Td (2. Instalar una extension como Markdown PDF.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 554.00 Td (3. Ejecutar la opcion Markdown PDF: Export \(pdf\).) Tj
+ET
+0 0 0 rg
+BT
+/F2 13 Tf
+48 524.00 Td (Opcion 2: Pandoc) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 488.00 Td (Si Pandoc esta instalado:) Tj
+ET
+0 0 0 rg
+BT
+/F3 8.5 Tf
+48 458.00 Td (pandoc docs\\README_QA.md -o docs\\README_QA.pdf) Tj
+ET
+0 0 0 rg
+BT
+/F2 13 Tf
+48 430.50 Td (Opcion 3: Navegador) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 394.50 Td (1. Abrir el Markdown en un visor que renderice Markdown.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 380.50 Td (2. Usar Imprimir.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 366.50 Td (3. Seleccionar Guardar como PDF.) Tj
+ET
+0 0 0 rg
+BT
+/F2 15 Tf
+48 302.50 Td (Conclusion) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 262.50 Td (El sistema Perfum Lab cuenta ahora con una base de QA automatizada para validar los procesos mas) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 250.50 Td (importantes del negocio.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 220.50 Td (Las pruebas ejecutadas confirman que los flujos principales de productos, inventario, ventas,) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 208.50 Td (facturas y reportes funcionan correctamente bajo los escenarios cubiertos.) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 178.50 Td (El enfoque con base JSON temporal permite repetir las pruebas de forma segura en cualquier) Tj
+ET
+0 0 0 rg
+BT
+/F1 10 Tf
+48 166.50 Td (computadora sin afectar los datos reales del sistema.) Tj
+ET
+0.45 0.45 0.45 rg
+BT
+/F1 8 Tf
+48 28 Td (Perfum Lab QA - pagina 9 de 9) Tj
+ET
+endstream
+endobj
+23 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 3 0 R /F2 4 0 R /F3 5 0 R >> >> /Contents 22 0 R >>
+endobj
+xref
+0 24
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000170 00000 n 
+0000000240 00000 n 
+0000000315 00000 n 
+0000000383 00000 n 
+0000003365 00000 n 
+0000003511 00000 n 
+0000005994 00000 n 
+0000006140 00000 n 
+0000008452 00000 n 
+0000008600 00000 n 
+0000011015 00000 n 
+0000011163 00000 n 
+0000014026 00000 n 
+0000014174 00000 n 
+0000016436 00000 n 
+0000016584 00000 n 
+0000018422 00000 n 
+0000018570 00000 n 
+0000021844 00000 n 
+0000021992 00000 n 
+0000023903 00000 n 
+trailer
+<< /Size 24 /Root 1 0 R >>
+startxref
+24051
+%%EOF

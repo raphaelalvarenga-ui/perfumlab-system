@@ -1,6 +1,14 @@
 from dataclasses import dataclass
 from typing import Optional
 
+from app.validaciones import (
+    validar_decimal_no_negativo,
+    validar_entero_no_negativo,
+    validar_sku,
+    validar_texto_opcional,
+    validar_texto_requerido,
+)
+
 
 @dataclass
 class Producto:
@@ -33,15 +41,27 @@ class Producto:
         )
 
     def validar(self):
-        if not self.sku.strip():
-            raise ValueError("El SKU del producto es obligatorio.")
-        if not self.nombre.strip():
-            raise ValueError("El nombre del producto es obligatorio.")
-        if self.costo < 0:
-            raise ValueError("El costo no puede ser negativo.")
-        if self.precio < 0:
-            raise ValueError("El precio no puede ser negativo.")
-        if self.stock_actual < 0:
-            raise ValueError("El stock actual no puede ser negativo.")
-        if self.stock_minimo < 0:
-            raise ValueError("El stock minimo no puede ser negativo.")
+        self.sku = validar_sku(self.sku)
+        self.nombre = validar_texto_requerido(
+            self.nombre,
+            "nombre del producto",
+            minimo=2,
+            maximo=120,
+            requiere_letra=True,
+        )
+        self.marca = validar_texto_opcional(self.marca, "marca", maximo=80)
+        self.descripcion = validar_texto_opcional(
+            self.descripcion,
+            "descripcion",
+            maximo=500,
+        )
+        self.costo = validar_decimal_no_negativo(self.costo, "El costo")
+        self.precio = validar_decimal_no_negativo(self.precio, "El precio")
+        self.stock_actual = validar_entero_no_negativo(
+            self.stock_actual,
+            "El stock actual",
+        )
+        self.stock_minimo = validar_entero_no_negativo(
+            self.stock_minimo,
+            "El stock minimo",
+        )
