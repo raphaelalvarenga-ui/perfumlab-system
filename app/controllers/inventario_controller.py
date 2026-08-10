@@ -57,7 +57,7 @@ class InventarioController:
         stock_anterior = int(producto["stock_actual"])
 
         if cantidad > stock_anterior:
-            raise ValueError("No hay stock suficiente para registrar la salida.")
+            raise ValueError("No hay suficiente stock disponible.")
 
         stock_nuevo = stock_anterior - cantidad
         movimiento_id = self._registrar_cambio_stock(

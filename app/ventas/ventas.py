@@ -707,6 +707,7 @@ def _obtener_o_crear_cliente(clientes, nombre):
         {
             "id": cliente_id,
             "nombre": nombre,
+            "correo": "",
             "telefono": "",
             "direccion": "",
             "activo": 1,

@@ -1,9 +1,13 @@
 import tkinter as tk
-from tkinter import messagebox, simpledialog, ttk
+from tkinter import filedialog, messagebox, simpledialog, ttk
 
 from app.controllers.inventario_controller import InventarioController
 from app.controllers.productos_controller import ProductosController
 from app.models.producto import Producto
+from app.reportes.excel_productos import (
+    exportar_productos_excel,
+    importar_productos_excel,
+)
 from app.ui_theme import COLORS, aplicar_tema, configurar_tabla, crear_encabezado
 
 
@@ -310,24 +314,29 @@ class ProductosView(ttk.Frame):
             pady=(0, 8),
         )
 
+        validar_decimal = (self.register(self._entrada_decimal_valida), "%P")
+        validar_entero = (self.register(self._entrada_entera_valida), "%P")
         campos = [
-            ("SKU", self.sku_var),
-            ("Nombre", self.nombre_var),
-            ("Marca", self.marca_var),
-            ("Costo", self.costo_var),
-            ("Precio", self.precio_var),
-            ("Stock actual", self.stock_var),
-            ("Stock minimo", self.stock_minimo_var),
+            ("SKU", self.sku_var, None),
+            ("Nombre", self.nombre_var, None),
+            ("Marca", self.marca_var, None),
+            ("Costo", self.costo_var, validar_decimal),
+            ("Precio", self.precio_var, validar_decimal),
+            ("Stock actual", self.stock_var, validar_entero),
+            ("Stock minimo", self.stock_minimo_var, validar_entero),
         ]
 
-        for indice, (etiqueta, variable) in enumerate(campos, start=2):
+        for indice, (etiqueta, variable, validacion) in enumerate(campos, start=2):
             ttk.Label(contenedor, text=etiqueta).grid(
                 row=indice,
                 column=0,
                 sticky=tk.W,
                 pady=3,
             )
-            ttk.Entry(contenedor, textvariable=variable).grid(
+            entrada = ttk.Entry(contenedor, textvariable=variable)
+            if validacion:
+                entrada.configure(validate="key", validatecommand=validacion)
+            entrada.grid(
                 row=indice,
                 column=1,
                 sticky="ew",
@@ -393,6 +402,15 @@ class ProductosView(ttk.Frame):
             (
                 ("Actualizar productos", self.cargar_productos, "Primary.TButton"),
                 ("Actualizar movimientos", self.cargar_movimientos, "Info.TButton"),
+            ),
+        )
+        self._crear_grupo_botones(
+            botones_frame,
+            4,
+            "Archivos",
+            (
+                ("Exportar Excel", self.exportar_excel, "Accent.TButton"),
+                ("Importar Excel", self.importar_excel, "Info.TButton"),
             ),
         )
 
@@ -497,7 +515,46 @@ class ProductosView(ttk.Frame):
             self.limpiar_formulario()
             messagebox.showinfo("Productos", mensaje)
         except Exception as error:
-            messagebox.showerror("Error", str(error))
+            messagebox.showerror("Productos", str(error))
+
+    def exportar_excel(self):
+        ruta_archivo = filedialog.asksaveasfilename(
+            parent=self.winfo_toplevel(),
+            title="Exportar inventario a Excel",
+            defaultextension=".xlsx",
+            initialfile="inventario_productos.xlsx",
+            filetypes=(("Excel", "*.xlsx"), ("Todos los archivos", "*.*")),
+        )
+
+        if not ruta_archivo:
+            return
+
+        try:
+            exportar_productos_excel(ruta_archivo)
+            messagebox.showinfo("Excel", "Inventario exportado correctamente.")
+        except Exception as error:
+            messagebox.showerror("Excel", str(error))
+
+    def importar_excel(self):
+        ruta_archivo = filedialog.askopenfilename(
+            parent=self.winfo_toplevel(),
+            title="Importar productos desde Excel",
+            filetypes=(("Excel", "*.xlsx"), ("Todos los archivos", "*.*")),
+        )
+
+        if not ruta_archivo:
+            return
+
+        try:
+            cantidad = importar_productos_excel(ruta_archivo)
+            self.cargar_productos()
+            self.cargar_movimientos()
+            messagebox.showinfo(
+                "Excel",
+                f"{cantidad} productos importados correctamente.",
+            )
+        except Exception as error:
+            messagebox.showerror("Excel", str(error))
 
     def eliminar_producto(self):
         producto_id = self._obtener_producto_id_seleccionado()
@@ -517,7 +574,7 @@ class ProductosView(ttk.Frame):
             self.limpiar_formulario()
             messagebox.showinfo("Productos", "Producto desactivado correctamente.")
         except Exception as error:
-            messagebox.showerror("Error", str(error))
+            messagebox.showerror("Productos", str(error))
 
     def registrar_entrada(self):
         producto_id = self._obtener_producto_id_seleccionado()
@@ -540,7 +597,7 @@ class ProductosView(ttk.Frame):
             self.cargar_movimientos()
             messagebox.showinfo("Inventario", "Entrada registrada correctamente.")
         except Exception as error:
-            messagebox.showerror("Error", str(error))
+            messagebox.showerror("Inventario", str(error))
 
     def registrar_salida(self):
         producto_id = self._obtener_producto_id_seleccionado()
@@ -563,7 +620,7 @@ class ProductosView(ttk.Frame):
             self.cargar_movimientos()
             messagebox.showinfo("Inventario", "Salida registrada correctamente.")
         except Exception as error:
-            messagebox.showerror("Error", str(error))
+            messagebox.showerror("Inventario", str(error))
 
     def registrar_ajuste(self):
         producto_id = self._obtener_producto_id_seleccionado()
@@ -590,7 +647,7 @@ class ProductosView(ttk.Frame):
             self.cargar_movimientos()
             messagebox.showinfo("Inventario", "Ajuste registrado correctamente.")
         except Exception as error:
-            messagebox.showerror("Error", str(error))
+            messagebox.showerror("Inventario", str(error))
 
     def limpiar_formulario(self):
         self.producto_seleccionado_id = None
@@ -627,7 +684,7 @@ class ProductosView(ttk.Frame):
             self.cargar_movimientos()
 
     def _leer_producto_desde_formulario(self):
-        stock_actual = self._convertir_entero(self.stock_var.get(), "Stock actual")
+        stock_actual = self._convertir_entero(self.stock_var.get(), "El stock actual")
 
         if self.producto_seleccionado_id is not None:
             producto_actual = self.productos_controller.obtener_producto(
@@ -640,12 +697,12 @@ class ProductosView(ttk.Frame):
             nombre=self.nombre_var.get(),
             marca=self.marca_var.get(),
             descripcion=self.descripcion_text.get("1.0", tk.END).strip(),
-            costo=self._convertir_decimal(self.costo_var.get(), "Costo"),
-            precio=self._convertir_decimal(self.precio_var.get(), "Precio"),
+            costo=self._convertir_decimal(self.costo_var.get(), "El costo"),
+            precio=self._convertir_decimal(self.precio_var.get(), "El precio"),
             stock_actual=stock_actual,
             stock_minimo=self._convertir_entero(
                 self.stock_minimo_var.get(),
-                "Stock minimo",
+                "El stock minimo",
             ),
         )
         producto.validar()
@@ -713,16 +770,46 @@ class ProductosView(ttk.Frame):
         ) or ""
 
     def _convertir_decimal(self, valor, campo):
+        valor = str(valor or "").strip().replace(",", ".")
+        if not valor:
+            raise ValueError(f"{campo} es obligatorio.")
+
         try:
-            return float(valor or 0)
+            numero = float(valor)
         except ValueError as error:
             raise ValueError(f"{campo} debe ser un numero valido.") from error
 
+        if numero < 0:
+            raise ValueError(f"{campo} no puede ser negativo.")
+
+        return numero
+
     def _convertir_entero(self, valor, campo):
+        valor = str(valor or "").strip()
+        if not valor:
+            raise ValueError(f"{campo} es obligatorio.")
+
         try:
-            return int(valor or 0)
+            numero = int(valor)
         except ValueError as error:
             raise ValueError(f"{campo} debe ser un numero entero valido.") from error
+
+        if numero < 0:
+            raise ValueError(f"{campo} no puede ser negativo.")
+
+        return numero
+
+    def _entrada_decimal_valida(self, valor):
+        if valor == "":
+            return True
+
+        if valor.count(".") + valor.count(",") > 1:
+            return False
+
+        return all(caracter.isdigit() or caracter in ".," for caracter in valor)
+
+    def _entrada_entera_valida(self, valor):
+        return valor == "" or valor.isdigit()
 
 
 def abrir_productos(root=None):

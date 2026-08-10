@@ -1,0 +1,417 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R 5 0 R 7 0 R 9 0 R] /Count 4 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 11 0 R /F2 12 0 R >> >> /Contents 4 0 R >>
+endobj
+4 0 obj
+<< /Length 2438 >>
+stream
+BT
+/F1 13 Tf
+50 760 Td (INFORME DE MEJORAS Y LIMPIEZA DEL PROYECTO PERFUM LAB) Tj
+ET
+BT
+/F2 9.5 Tf
+50 742 Td (Este documento resume las mejoras realizadas a mi proyecto Perfum Lab tomando como base la) Tj
+ET
+BT
+/F2 9.5 Tf
+50 729 Td (evaluacion de UI/UX y calidad de software realizada por un compa?ero de clase.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 708 Td (Las recomendaciones principales fueron mejorar validaciones, agregar un modulo de clientes) Tj
+ET
+BT
+/F2 9.5 Tf
+50 695 Td (con correo electronico, agregar funciones de Excel y ordenar la interfaz sin cambiar) Tj
+ET
+BT
+/F2 9.5 Tf
+50 682 Td (completamente el dise?o.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 661 Td (Despues de implementar esas mejoras, tambien se limpio el proyecto para dejarlo listo para) Tj
+ET
+BT
+/F2 9.5 Tf
+50 648 Td (subir al repositorio, usando solamente JSON como almacenamiento de datos.) Tj
+ET
+BT
+/F1 13 Tf
+50 607 Td (1. Analisis inicial) Tj
+ET
+BT
+/F2 9.5 Tf
+50 589 Td (Antes de hacer cambios se reviso la estructura del proyecto.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 568 Td (Perfum Lab es una aplicacion de escritorio hecha en Python con Tkinter y ttk.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 547 Td (El codigo esta organizado por vistas, controladores, modelos, base de datos, ventas,) Tj
+ET
+BT
+/F2 9.5 Tf
+50 534 Td (facturas y reportes.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 513 Td (La base activa del sistema trabaja con archivos JSON dentro de database/json.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 492 Td (Por eso se mantuvo esa arquitectura y se eliminaron los restos de SQLite que ya no se) Tj
+ET
+BT
+/F2 9.5 Tf
+50 479 Td (necesitaban.) Tj
+ET
+BT
+/F1 13 Tf
+50 438 Td (2. Validaciones implementadas) Tj
+ET
+BT
+/F2 9.5 Tf
+50 420 Td (Se reforzaron las validaciones para evitar guardar informacion incompleta o incorrecta.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 399 Td (Ahora el SKU y el nombre del producto son obligatorios.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 378 Td (No se permite registrar un SKU duplicado.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 357 Td (El precio debe ser un numero valido y mayor que 0.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 336 Td (El costo, el stock actual y el stock minimo no pueden ser negativos.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 315 Td (Las entradas, salidas y ajustes de inventario validan cantidades correctas.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 294 Td (Si no hay suficiente stock, el sistema muestra un mensaje claro.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 273 Td (Tambien se mejoraron los mensajes para que el usuario sepa exactamente que debe corregir.) Tj
+ET
+BT /F2 8 Tf 50 28 Td (Pagina 1 de 4) Tj ET
+endstream
+endobj
+5 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 11 0 R /F2 12 0 R >> >> /Contents 6 0 R >>
+endobj
+6 0 obj
+<< /Length 2389 >>
+stream
+BT
+/F1 13 Tf
+50 760 Td (3. Modulo de clientes) Tj
+ET
+BT
+/F2 9.5 Tf
+50 742 Td (Se agrego un nuevo apartado llamado Clientes en el menu principal.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 721 Td (Este modulo permite registrar, buscar, editar, desactivar y listar clientes.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 700 Td (Los datos manejados son ID, nombre, correo electronico, telefono, direccion y estado.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 679 Td (El correo se valida para aceptar formatos correctos como cliente@gmail.com o) Tj
+ET
+BT
+/F2 9.5 Tf
+50 666 Td (usuario@hotmail.com.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 645 Td (No se permite registrar dos clientes con el mismo correo electronico.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 624 Td (Los archivos creados fueron app/models/cliente.py, app/controllers/clientes_controller.py y) Tj
+ET
+BT
+/F2 9.5 Tf
+50 611 Td (app/views/clientes_view.py.) Tj
+ET
+BT
+/F1 13 Tf
+50 570 Td (4. Funciones de Excel) Tj
+ET
+BT
+/F2 9.5 Tf
+50 552 Td (Se agregaron botones de Exportar Excel e Importar Excel dentro de Productos e inventario.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 531 Td (La exportacion genera un archivo .xlsx con ID, SKU, nombre, marca, categoria, costo, precio,) Tj
+ET
+BT
+/F2 9.5 Tf
+50 518 Td (stock actual, stock minimo y estado.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 497 Td (La importacion permite seleccionar un archivo .xlsx y registrar productos nuevos.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 476 Td (Antes de guardar se validan campos obligatorios, numeros y SKU duplicados.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 455 Td (Si una fila del Excel tiene un problema, se muestra el numero de fila y no se guarda el lote) Tj
+ET
+BT
+/F2 9.5 Tf
+50 442 Td (incompleto.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 421 Td (La dependencia usada para Excel es openpyxl.) Tj
+ET
+BT
+/F1 13 Tf
+50 380 Td (5. Mejoras de interfaz) Tj
+ET
+BT
+/F2 9.5 Tf
+50 362 Td (No se cambio completamente el dise?o del programa.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 341 Td (Se mantuvo el estilo visual existente definido en app/ui_theme.py.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 320 Td (La pantalla de Clientes sigue el mismo orden visual del sistema: barra de busqueda, tabla y) Tj
+ET
+BT
+/F2 9.5 Tf
+50 307 Td (formulario.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 286 Td (En Productos se organizo el grupo Archivos para las opciones de Excel.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 265 Td (Los mensajes de error y confirmacion ahora usan titulos mas claros como Productos,) Tj
+ET
+BT
+/F2 9.5 Tf
+50 252 Td (Inventario, Excel o Clientes.) Tj
+ET
+BT /F2 8 Tf 50 28 Td (Pagina 2 de 4) Tj ET
+endstream
+endobj
+7 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 11 0 R /F2 12 0 R >> >> /Contents 8 0 R >>
+endobj
+8 0 obj
+<< /Length 2416 >>
+stream
+BT
+/F1 13 Tf
+50 732 Td (6. Limpieza de base de datos) Tj
+ET
+BT
+/F2 9.5 Tf
+50 714 Td (Como el sistema ahora usa JSON, se limpio database/json para que todos los archivos queden) Tj
+ET
+BT
+/F2 9.5 Tf
+50 701 Td (vacios y listos para empezar desde cero.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 680 Td (Los archivos categorias.json, clientes.json, productos.json, movimientos_inventario.json,) Tj
+ET
+BT
+/F2 9.5 Tf
+50 667 Td (ventas.json, detalle_venta.json, facturas.json y usuarios.json quedaron como listas vacias.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 646 Td (Esto evita subir datos de prueba, clientes, productos o ventas personales al repositorio.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 625 Td (Tambien se simplifico app/database/json_storage.py para que los datos iniciales sean vacios.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 604 Td (Si los archivos JSON no existen, el sistema los puede crear nuevamente vacios con) Tj
+ET
+BT
+/F2 9.5 Tf
+50 591 Td (crear_db.py.) Tj
+ET
+BT
+/F1 13 Tf
+50 550 Td (7. Eliminacion de SQLite y carpetas generadas) Tj
+ET
+BT
+/F2 9.5 Tf
+50 532 Td (Se elimino el archivo de base de datos SQLite local porque ya no se usa en el sistema.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 511 Td (Tambien se elimino el archivo de esquema SQL que ya no era necesario para el funcionamiento) Tj
+ET
+BT
+/F2 9.5 Tf
+50 498 Td (actual.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 477 Td (Se limpio la carpeta de respaldos de la migracion anterior.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 456 Td (Se eliminaron carpetas generadas por PyInstaller y Python, como build, dist,) Tj
+ET
+BT
+/F2 9.5 Tf
+50 443 Td (build_actualizado, dist_actualizado, .uv-cache y __pycache__.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 422 Td (Estas carpetas se pueden volver a generar cuando se necesite crear un nuevo ejecutable.) Tj
+ET
+BT
+/F1 13 Tf
+50 381 Td (8. Archivos principales modificados o creados) Tj
+ET
+BT
+/F2 9.5 Tf
+50 363 Td (README.md se actualizo con instrucciones claras para instalar, ejecutar y generar el .exe.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 342 Td (requirements.txt incluye openpyxl y pyinstaller.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 321 Td (PerfumLab.spec ahora empaqueta los JSON limpios y no archivos de SQLite.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 300 Td (app/database/json_storage.py ahora inicializa datos vacios.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 279 Td (database/json contiene archivos vacios listos para empezar.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 258 Td (tests/test_qa_core.py crea sus propios datos temporales para pruebas, sin depender de la) Tj
+ET
+BT /F2 8 Tf 50 28 Td (Pagina 3 de 4) Tj ET
+endstream
+endobj
+9 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 11 0 R /F2 12 0 R >> >> /Contents 10 0 R >>
+endobj
+10 0 obj
+<< /Length 1107 >>
+stream
+BT
+/F2 9.5 Tf
+50 760 Td (base real.) Tj
+ET
+BT
+/F1 13 Tf
+50 719 Td (9. Verificacion realizada) Tj
+ET
+BT
+/F2 9.5 Tf
+50 701 Td (Se verifico que los archivos JSON del proyecto quedaron vacios.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 680 Td (Se reviso que no quedaran carpetas generadas innecesarias en la raiz del proyecto.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 659 Td (Se reviso el estado de Git para identificar los archivos modificados, eliminados y nuevos) Tj
+ET
+BT
+/F2 9.5 Tf
+50 646 Td (antes del push.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 625 Td (La idea es subir solo codigo, documentacion util y archivos JSON limpios.) Tj
+ET
+BT
+/F1 13 Tf
+50 584 Td (10. Conclusion) Tj
+ET
+BT
+/F2 9.5 Tf
+50 566 Td (Con estos cambios, Perfum Lab queda mas ordenado para trabajar en equipo.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 545 Td (El proyecto conserva su arquitectura, pero ahora tiene mejores validaciones, modulo de) Tj
+ET
+BT
+/F2 9.5 Tf
+50 532 Td (clientes, soporte de Excel y una base JSON limpia.) Tj
+ET
+BT
+/F2 9.5 Tf
+50 511 Td (Tambien queda mas claro como generar el ejecutable en otra computadora siguiendo el README.) Tj
+ET
+BT /F2 8 Tf 50 28 Td (Pagina 4 de 4) Tj ET
+endstream
+endobj
+11 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+12 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+xref
+0 13
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000133 00000 n 
+0000000271 00000 n 
+0000002761 00000 n 
+0000002899 00000 n 
+0000005340 00000 n 
+0000005478 00000 n 
+0000007946 00000 n 
+0000008085 00000 n 
+0000009245 00000 n 
+0000009321 00000 n 
+trailer
+<< /Size 13 /Root 1 0 R >>
+startxref
+9392
+%%EOF

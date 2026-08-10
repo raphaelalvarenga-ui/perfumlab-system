@@ -9,7 +9,7 @@ __pycache__/
 dist/
 dist_actualizado/
 build/
-*.spec
+build_actualizado/
 backups/
 
 .venv/

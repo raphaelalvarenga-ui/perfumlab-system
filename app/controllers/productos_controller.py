@@ -54,7 +54,7 @@ class ProductosController:
         productos = cargar_tabla("productos", self.ruta_datos)
 
         if self._existe_sku_producto(productos, producto.sku):
-            raise ValueError("Ya existe un producto con ese SKU.")
+            raise ValueError("El SKU ya esta registrado.")
 
         if producto.categoria_id is not None:
             self._validar_categoria(producto.categoria_id)
@@ -63,6 +63,39 @@ class ProductosController:
         productos.append(self._crear_registro_producto(producto_id, producto))
         guardar_tabla("productos", productos, self.ruta_datos)
         return producto_id
+
+    def crear_productos_lote(self, productos_nuevos):
+        if not productos_nuevos:
+            raise ValueError("No hay productos para importar.")
+
+        productos = cargar_tabla("productos", self.ruta_datos)
+        skus_lote = set()
+
+        for producto in productos_nuevos:
+            producto.validar()
+            sku_normalizado = producto.sku.strip().lower()
+
+            if sku_normalizado in skus_lote:
+                raise ValueError(f"El SKU {producto.sku} esta duplicado en el archivo.")
+
+            if self._existe_sku_producto(productos, producto.sku):
+                raise ValueError(f"El SKU {producto.sku} ya esta registrado.")
+
+            if producto.categoria_id is not None:
+                self._validar_categoria(producto.categoria_id)
+
+            skus_lote.add(sku_normalizado)
+
+        ids_creados = []
+        siguiente_producto_id = siguiente_id("productos", productos)
+
+        for producto in productos_nuevos:
+            productos.append(self._crear_registro_producto(siguiente_producto_id, producto))
+            ids_creados.append(siguiente_producto_id)
+            siguiente_producto_id += 1
+
+        guardar_tabla("productos", productos, self.ruta_datos)
+        return ids_creados
 
     def obtener_producto(self, producto_id):
         productos = cargar_tabla("productos", self.ruta_datos)
@@ -106,7 +139,7 @@ class ProductosController:
             return False
 
         if self._existe_sku_producto(productos, producto.sku, excluir_id=producto_id):
-            raise ValueError("Ya existe un producto con ese SKU.")
+            raise ValueError("El SKU ya esta registrado.")
 
         if producto.categoria_id is not None:
             self._validar_categoria(producto.categoria_id)

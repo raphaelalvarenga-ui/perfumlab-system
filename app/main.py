@@ -10,6 +10,7 @@ if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
 from app.ui_theme import aplicar_tema
+from app.views.clientes_view import abrir_clientes
 from app.views.productos_view import abrir_productos
 
 
@@ -75,6 +76,9 @@ class PerfumLabApp:
     def mostrar_ventas(self):
         modulo_ventas = importlib.import_module("app.ventas.ventas")
         self._mostrar_modulo("Ventas", lambda: modulo_ventas.abrir_ventas(self.contenido))
+
+    def mostrar_clientes(self):
+        self._mostrar_modulo("Clientes", lambda: abrir_clientes(self.contenido))
 
     def mostrar_facturas(self):
         self._mostrar_modulo(
@@ -162,6 +166,12 @@ def crear_menu_principal(root, app):
             "Productos e inventario",
             "Catalogo, stock y movimientos del almacen.",
             app.mostrar_productos,
+            "Primary.TButton",
+        ),
+        (
+            "Clientes",
+            "Correos, telefonos y estado de clientes.",
+            app.mostrar_clientes,
             "Primary.TButton",
         ),
         (

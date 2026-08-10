@@ -3,6 +3,7 @@ from typing import Optional
 
 from app.validaciones import (
     validar_decimal_no_negativo,
+    validar_decimal_positivo,
     validar_entero_no_negativo,
     validar_sku,
     validar_texto_opcional,
@@ -56,7 +57,7 @@ class Producto:
             maximo=500,
         )
         self.costo = validar_decimal_no_negativo(self.costo, "El costo")
-        self.precio = validar_decimal_no_negativo(self.precio, "El precio")
+        self.precio = validar_decimal_positivo(self.precio, "El precio")
         self.stock_actual = validar_entero_no_negativo(
             self.stock_actual,
             "El stock actual",

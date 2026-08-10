@@ -2,14 +2,22 @@ import tempfile
 import unittest
 from pathlib import Path
 
+from app.controllers.clientes_controller import ClientesController
 from app.controllers.inventario_controller import InventarioController
 from app.controllers.productos_controller import ProductosController
 from app.database.json_storage import cargar_tabla, inicializar_datos_json
 from app.facturas import facturas
+from app.models.cliente import Cliente
 from app.models.categoria import Categoria
 from app.models.producto import Producto
+from app.reportes import excel_productos
 from app.reportes import reportes
 from app.ventas import ventas
+
+try:
+    import openpyxl
+except ImportError:
+    openpyxl = None
 
 
 class PerfumLabQATestCase(unittest.TestCase):
@@ -17,14 +25,71 @@ class PerfumLabQATestCase(unittest.TestCase):
         self.temporal = tempfile.TemporaryDirectory()
         self.ruta_db = Path(self.temporal.name) / "json"
         inicializar_datos_json(self.ruta_db)
+        self.clientes = ClientesController(self.ruta_db)
         self.productos = ProductosController(self.ruta_db)
         self.inventario = InventarioController(self.ruta_db)
+        self._crear_datos_qa()
 
     def tearDown(self):
         self.temporal.cleanup()
 
     def _producto(self, producto_id):
         return self.productos.obtener_producto(producto_id)
+
+    def _crear_datos_qa(self):
+        for categoria in (
+            Categoria(nombre="Hombre", descripcion="Perfumes para hombre"),
+            Categoria(nombre="Mujer", descripcion="Perfumes para mujer"),
+            Categoria(nombre="Unisex", descripcion="Fragancias unisex"),
+            Categoria(nombre="Ambientales", descripcion="Aromas para espacios"),
+        ):
+            self.productos.crear_categoria(categoria)
+
+        productos = (
+            Producto(
+                sku="PF-HOM-001",
+                nombre="Cedro Nocturno",
+                categoria_id=1,
+                marca="Perfum Lab",
+                costo=420,
+                precio=850,
+                stock_actual=18,
+                stock_minimo=5,
+            ),
+            Producto(
+                sku="PF-HOM-002",
+                nombre="Vetiver Reserva",
+                categoria_id=1,
+                marca="Perfum Lab",
+                costo=390,
+                precio=780,
+                stock_actual=4,
+                stock_minimo=5,
+            ),
+            Producto(
+                sku="PF-HOM-003",
+                nombre="Azul Intenso",
+                categoria_id=1,
+                marca="Perfum Lab",
+                costo=350,
+                precio=700,
+                stock_actual=22,
+                stock_minimo=6,
+            ),
+            Producto(
+                sku="PF-MUJ-001",
+                nombre="Rosa Imperial",
+                categoria_id=2,
+                marca="Perfum Lab",
+                costo=410,
+                precio=820,
+                stock_actual=15,
+                stock_minimo=5,
+            ),
+        )
+
+        for producto in productos:
+            self.productos.crear_producto(producto)
 
     def test_productos_e_inventario_crud_y_movimientos(self):
         producto = Producto(
@@ -40,6 +105,8 @@ class PerfumLabQATestCase(unittest.TestCase):
 
         producto_id = self.productos.crear_producto(producto)
         self.assertEqual(self._producto(producto_id).stock_actual, 10)
+        productos_reabierto = ProductosController(self.ruta_db)
+        self.assertEqual(productos_reabierto.obtener_producto(producto_id).nombre, "QA Inventario")
 
         with self.assertRaises(ValueError):
             self.productos.crear_producto(
@@ -63,6 +130,9 @@ class PerfumLabQATestCase(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.inventario.registrar_salida(producto_id, 99, "Salida excesiva")
         self.assertEqual(self._producto(producto_id).stock_actual, 11)
+
+        with self.assertRaises(ValueError):
+            self.inventario.registrar_entrada(producto_id, -1, "Entrada negativa")
 
         self.inventario.registrar_ajuste(producto_id, 7, "Ajuste QA")
         self.assertEqual(self._producto(producto_id).stock_actual, 7)
@@ -210,6 +280,30 @@ class PerfumLabQATestCase(unittest.TestCase):
                 costo=1,
                 precio=float("nan"),
             ),
+            Producto(
+                sku="QA-VAL-003",
+                nombre="",
+                costo=1,
+                precio=2,
+            ),
+            Producto(
+                sku="QA-VAL-004",
+                nombre="Producto valido",
+                costo=1,
+                precio="abc",
+            ),
+            Producto(
+                sku="QA-VAL-005",
+                nombre="Producto valido",
+                costo=-1,
+                precio=2,
+            ),
+            Producto(
+                sku="QA-VAL-006",
+                nombre="Producto valido",
+                costo=1,
+                precio=0,
+            ),
         ]
 
         for producto in productos_invalidos:
@@ -341,6 +435,140 @@ class PerfumLabQATestCase(unittest.TestCase):
         contenido_csv = ruta_csv.read_text(encoding="utf-8")
         self.assertIn("Cantidad vendida", contenido_csv)
         self.assertIn("Cedro Nocturno", contenido_csv)
+
+    def test_clientes_crud_correo_unico_y_validaciones(self):
+        cliente_id = self.clientes.crear_cliente(
+            Cliente(
+                nombre="Cliente Correo QA",
+                correo="ClienteQA@Gmail.com",
+                telefono="9999-3333",
+                direccion="La Paz",
+            )
+        )
+
+        cliente = self.clientes.obtener_cliente(cliente_id)
+        self.assertEqual(cliente.correo, "clienteqa@gmail.com")
+        clientes_reabierto = ClientesController(self.ruta_db)
+        self.assertEqual(
+            clientes_reabierto.obtener_cliente(cliente_id).correo,
+            "clienteqa@gmail.com",
+        )
+
+        encontrados = self.clientes.buscar_clientes("gmail")
+        self.assertTrue(any(cliente.id == cliente_id for cliente in encontrados))
+
+        with self.assertRaises(ValueError):
+            self.clientes.crear_cliente(
+                Cliente(nombre="Correo Invalido", correo="cliente@")
+            )
+
+        with self.assertRaises(ValueError):
+            self.clientes.crear_cliente(
+                Cliente(
+                    nombre="Correo Duplicado",
+                    correo="clienteqa@gmail.com",
+                    telefono="9999-4444",
+                )
+            )
+
+        self.assertTrue(
+            self.clientes.actualizar_cliente(
+                cliente_id,
+                Cliente(
+                    nombre="Cliente Correo Editado",
+                    correo="cliente.editado@hotmail.com",
+                    telefono="9999-5555",
+                    direccion="Comayagua",
+                ),
+            )
+        )
+        self.assertEqual(
+            self.clientes.obtener_cliente(cliente_id).correo,
+            "cliente.editado@hotmail.com",
+        )
+
+        self.assertTrue(self.clientes.eliminar_cliente(cliente_id))
+        activos = self.clientes.listar_clientes()
+        self.assertFalse(any(cliente.id == cliente_id for cliente in activos))
+
+    @unittest.skipUnless(openpyxl is not None, "openpyxl no esta instalado")
+    def test_excel_exportacion_importacion_y_errores_por_fila(self):
+        ruta_exportacion = Path(self.temporal.name) / "inventario.xlsx"
+        excel_productos.exportar_productos_excel(ruta_exportacion, self.ruta_db)
+        self.assertTrue(ruta_exportacion.exists())
+
+        workbook = openpyxl.load_workbook(ruta_exportacion, read_only=True)
+        hoja = workbook.active
+        encabezados = [celda.value for celda in next(hoja.iter_rows(max_row=1))]
+        workbook.close()
+        self.assertIn("SKU", encabezados)
+        self.assertIn("Stock actual", encabezados)
+
+        ruta_importacion = Path(self.temporal.name) / "productos_importar.xlsx"
+        workbook = openpyxl.Workbook()
+        hoja = workbook.active
+        hoja.append(
+            [
+                "SKU",
+                "Nombre",
+                "Marca",
+                "Categoria",
+                "Costo",
+                "Precio",
+                "Stock actual",
+                "Stock minimo",
+            ]
+        )
+        hoja.append(
+            [
+                "QA-XLS-001",
+                "Excel Producto Uno",
+                "Perfum Lab",
+                "Unisex",
+                100,
+                250,
+                4,
+                1,
+            ]
+        )
+        hoja.append(["QA-XLS-002", "Excel Producto Dos", "", "", 50, 150, 0, 0])
+        workbook.save(ruta_importacion)
+        workbook.close()
+
+        cantidad = excel_productos.importar_productos_excel(
+            ruta_importacion,
+            self.ruta_db,
+        )
+        self.assertEqual(cantidad, 2)
+        self.assertTrue(self.productos.buscar_productos("QA-XLS-001"))
+
+        productos_antes = len(cargar_tabla("productos", self.ruta_db))
+        ruta_erronea = Path(self.temporal.name) / "productos_error.xlsx"
+        workbook = openpyxl.Workbook()
+        hoja = workbook.active
+        hoja.append(
+            [
+                "SKU",
+                "Nombre",
+                "Marca",
+                "Categoria",
+                "Costo",
+                "Precio",
+                "Stock actual",
+                "Stock minimo",
+            ]
+        )
+        hoja.append(["QA-XLS-001", "SKU Existente", "", "", 1, 10, 1, 0])
+        hoja.append(["QA-XLS-003", "Precio Malo", "", "", 1, "abc", 1, 0])
+        workbook.save(ruta_erronea)
+        workbook.close()
+
+        with self.assertRaises(ValueError) as contexto:
+            excel_productos.importar_productos_excel(ruta_erronea, self.ruta_db)
+
+        self.assertIn("Fila 2", str(contexto.exception))
+        self.assertIn("Fila 3", str(contexto.exception))
+        self.assertEqual(len(cargar_tabla("productos", self.ruta_db)), productos_antes)
 
 
 if __name__ == "__main__":

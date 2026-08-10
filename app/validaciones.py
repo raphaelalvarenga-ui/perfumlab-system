@@ -5,6 +5,8 @@ from pathlib import Path
 
 
 SKU_REGEX = re.compile(r"^[A-Za-z0-9_-]+$")
+CORREO_REGEX = re.compile(r"^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$")
+TELEFONO_REGEX = re.compile(r"^[0-9+\-() ]+$")
 ENTERO_REGEX = re.compile(r"^[+-]?\d+$")
 CONTROL_REGEX = re.compile(r"[\x00-\x1f\x7f]")
 
@@ -44,7 +46,7 @@ def validar_texto_opcional(valor, campo, maximo=250, requiere_letra=False):
 def validar_sku(valor):
     sku = validar_texto_requerido(
         valor,
-        "SKU del producto",
+        "SKU",
         minimo=3,
         maximo=30,
     )
@@ -57,6 +59,25 @@ def validar_sku(valor):
     return sku
 
 
+def validar_correo(valor):
+    correo = limpiar_texto(valor).lower()
+
+    if not correo:
+        raise ValueError("El correo electronico es obligatorio.")
+
+    if len(correo) > 120:
+        raise ValueError("El correo electronico no puede superar 120 caracteres.")
+
+    if CONTROL_REGEX.search(correo) or not CORREO_REGEX.fullmatch(correo):
+        raise ValueError("El correo electronico no tiene un formato valido.")
+
+    usuario, dominio = correo.split("@", 1)
+    if not usuario or not dominio or dominio.startswith(".") or dominio.endswith("."):
+        raise ValueError("El correo electronico no tiene un formato valido.")
+
+    return correo
+
+
 def validar_nombre_cliente(valor):
     return validar_texto_requerido(
         valor,
@@ -67,7 +88,24 @@ def validar_nombre_cliente(valor):
     )
 
 
+def validar_telefono(valor):
+    telefono = validar_texto_opcional(valor, "telefono", maximo=25)
+
+    if telefono and not TELEFONO_REGEX.fullmatch(telefono):
+        raise ValueError(
+            "El telefono solo puede contener numeros, espacios, guiones, + y parentesis."
+        )
+
+    digitos = [caracter for caracter in telefono if caracter.isdigit()]
+    if telefono and len(digitos) < 7:
+        raise ValueError("El telefono debe tener al menos 7 digitos.")
+
+    return telefono
+
+
 def validar_decimal_no_negativo(valor, campo):
+    valor = _normalizar_decimal(valor, campo)
+
     try:
         numero = float(valor)
     except (TypeError, ValueError) as error:
@@ -78,6 +116,15 @@ def validar_decimal_no_negativo(valor, campo):
 
     if numero < 0:
         raise ValueError(f"{campo} no puede ser negativo.")
+
+    return numero
+
+
+def validar_decimal_positivo(valor, campo):
+    numero = validar_decimal_no_negativo(valor, campo)
+
+    if numero <= 0:
+        raise ValueError(f"{campo} debe ser mayor que 0.")
 
     return numero
 
@@ -181,6 +228,9 @@ def _convertir_entero(valor, campo):
     if isinstance(valor, bool):
         raise ValueError(f"{campo} debe ser un numero entero.")
 
+    if limpiar_texto(valor) == "":
+        raise ValueError(f"{campo} es obligatorio.")
+
     if isinstance(valor, float) and not valor.is_integer():
         raise ValueError(f"{campo} debe ser un numero entero.")
 
@@ -191,3 +241,16 @@ def _convertir_entero(valor, campo):
         return int(valor)
     except (TypeError, ValueError) as error:
         raise ValueError(f"{campo} debe ser un numero entero.") from error
+
+
+def _normalizar_decimal(valor, campo):
+    if isinstance(valor, bool):
+        raise ValueError(f"{campo} debe ser un numero valido.")
+
+    if isinstance(valor, str):
+        valor = valor.strip().replace(",", ".")
+
+    if limpiar_texto(valor) == "":
+        raise ValueError(f"{campo} es obligatorio.")
+
+    return valor
