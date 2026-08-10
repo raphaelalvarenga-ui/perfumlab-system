@@ -166,11 +166,94 @@ El `.exe` anterior no se actualiza solo.
 ## Archivos importantes
 
 - `app\main.py`: abre la aplicacion.
+- `app\main_api.py`: abre la API REST con FastAPI.
 - `crear_db.py`: crea o verifica los datos iniciales.
 - `database\json`: contiene los datos del sistema.
 - `PerfumLab.spec`: configuracion para crear el `.exe`.
 - `requirements.txt`: dependencias del proyecto.
 - `docs`: documentos y reportes del proyecto.
+
+## API REST
+
+La API REST es una capa nueva que convive con la aplicacion Tkinter. En esta
+fase solo incluye endpoints de diagnostico y deja preparada la conexion con
+PostgreSQL, SQLAlchemy y Alembic.
+
+### Instalar dependencias
+
+Desde la carpeta principal del proyecto:
+
+```powershell
+python -m pip install -r requirements.txt
+```
+
+### Configurar variables de entorno
+
+Crear un archivo `.env` tomando como referencia `.env.example`:
+
+```text
+APP_NAME=Perfum Lab API
+APP_VERSION=1.0.0
+DATABASE_URL=postgresql+psycopg://postgres:password@localhost:5432/perfumlab
+SECRET_KEY=change_this_secret_key
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+```
+
+No se deben guardar contrasenas reales en el codigo. El archivo `.env` esta
+ignorado por Git; `.env.example` queda versionado como plantilla.
+
+### Crear la base PostgreSQL
+
+Crear una base de datos llamada `perfumlab` en PostgreSQL. El usuario, clave,
+host y puerto deben coincidir con `DATABASE_URL`.
+
+Ejemplo desde `psql`:
+
+```sql
+CREATE DATABASE perfumlab;
+```
+
+### Ejecutar migraciones
+
+Alembic toma `DATABASE_URL` desde la misma configuracion de la aplicacion:
+
+```powershell
+alembic upgrade head
+```
+
+En esta fase todavia no hay tablas de negocio, por lo que no se incluye una
+migracion inicial con modelos.
+
+### Ejecutar FastAPI
+
+```powershell
+uvicorn app.main_api:app --reload
+```
+
+Swagger queda disponible en:
+
+```text
+http://127.0.0.1:8000/docs
+```
+
+ReDoc queda disponible en:
+
+```text
+http://127.0.0.1:8000/redoc
+```
+
+### Comprobar health
+
+```text
+GET http://127.0.0.1:8000/
+GET http://127.0.0.1:8000/api/v1/health
+GET http://127.0.0.1:8000/api/v1/health/db
+```
+
+`/api/v1/health/db` ejecuta `SELECT 1` contra PostgreSQL. Si `DATABASE_URL` no
+esta configurado o PostgreSQL no esta disponible, responde con un error
+controlado sin exponer credenciales.
 
 ## Notas sobre carpetas generadas
 
