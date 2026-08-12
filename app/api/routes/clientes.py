@@ -1,8 +1,11 @@
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
+from app.api.dependencies.auth import get_current_user, require_roles
 from app.api.routes._errors import service_error_to_http
 from app.database.session import get_db
+from app.models.orm.usuario import UsuarioORM
+from app.models.tipos import RolUsuario
 from app.schemas.cliente import (
     ClienteCreate,
     ClienteListResponse,
@@ -14,6 +17,11 @@ from app.services.exceptions import ServiceError
 
 
 router = APIRouter(prefix="/clientes", tags=["Clientes"])
+admin_required = require_roles(RolUsuario.ADMINISTRADOR)
+vendedor_or_admin_required = require_roles(
+    RolUsuario.ADMINISTRADOR,
+    RolUsuario.VENDEDOR,
+)
 
 
 @router.get("", response_model=ClienteListResponse)
@@ -23,6 +31,7 @@ def listar_clientes(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
+    _current_user: UsuarioORM = Depends(get_current_user),
 ):
     return ClientesService(db).listar_clientes(
         buscar=buscar,
@@ -33,7 +42,11 @@ def listar_clientes(
 
 
 @router.get("/{cliente_id}", response_model=ClienteResponse)
-def obtener_cliente(cliente_id: int, db: Session = Depends(get_db)):
+def obtener_cliente(
+    cliente_id: int,
+    db: Session = Depends(get_db),
+    _current_user: UsuarioORM = Depends(get_current_user),
+):
     try:
         return ClientesService(db).obtener_cliente(cliente_id)
     except ServiceError as error:
@@ -45,7 +58,11 @@ def obtener_cliente(cliente_id: int, db: Session = Depends(get_db)):
     response_model=ClienteResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def crear_cliente(payload: ClienteCreate, db: Session = Depends(get_db)):
+def crear_cliente(
+    payload: ClienteCreate,
+    db: Session = Depends(get_db),
+    _actor: UsuarioORM = Depends(vendedor_or_admin_required),
+):
     try:
         return ClientesService(db).crear_cliente(payload.model_dump())
     except ServiceError as error:
@@ -57,6 +74,7 @@ def actualizar_cliente(
     cliente_id: int,
     payload: ClienteCreate,
     db: Session = Depends(get_db),
+    _actor: UsuarioORM = Depends(vendedor_or_admin_required),
 ):
     try:
         return ClientesService(db).actualizar_cliente(
@@ -72,6 +90,7 @@ def actualizar_cliente_parcial(
     cliente_id: int,
     payload: ClienteUpdate,
     db: Session = Depends(get_db),
+    _actor: UsuarioORM = Depends(vendedor_or_admin_required),
 ):
     try:
         return ClientesService(db).actualizar_cliente_parcial(
@@ -83,7 +102,11 @@ def actualizar_cliente_parcial(
 
 
 @router.delete("/{cliente_id}", response_model=ClienteResponse)
-def eliminar_cliente(cliente_id: int, db: Session = Depends(get_db)):
+def eliminar_cliente(
+    cliente_id: int,
+    db: Session = Depends(get_db),
+    _admin: UsuarioORM = Depends(admin_required),
+):
     try:
         return ClientesService(db).eliminar_cliente(cliente_id)
     except ServiceError as error:

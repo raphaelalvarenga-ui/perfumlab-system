@@ -50,7 +50,7 @@ def obtener_producto(client, producto_id):
     return response.json()
 
 
-def test_entrada_correcta_incrementa_stock_y_registra_movimiento(client):
+def test_entrada_correcta_incrementa_stock_y_registra_movimiento(client, admin_user):
     producto = crear_producto(client, stock_actual=10)
 
     response = client.post(
@@ -70,7 +70,7 @@ def test_entrada_correcta_incrementa_stock_y_registra_movimiento(client):
     assert movimiento["stock_anterior"] == 10
     assert movimiento["stock_nuevo"] == 15
     assert movimiento["motivo"] == "Compra de mercaderia"
-    assert movimiento["usuario_id"] is None
+    assert movimiento["usuario_id"] == admin_user["id"]
     assert obtener_producto(client, producto["id"])["stock_actual"] == 15
 
 

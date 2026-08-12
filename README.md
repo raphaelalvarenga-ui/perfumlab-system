@@ -175,9 +175,9 @@ El `.exe` anterior no se actualiza solo.
 
 ## API REST
 
-La API REST es una capa nueva que convive con la aplicacion Tkinter. En esta
-fase solo incluye endpoints de diagnostico y deja preparada la conexion con
-PostgreSQL, SQLAlchemy y Alembic.
+La API REST es una capa nueva que convive con la aplicacion Tkinter. La
+aplicacion de escritorio sigue usando JSON; FastAPI usa PostgreSQL, SQLAlchemy,
+Alembic y autenticacion JWT.
 
 ### Instalar dependencias
 
@@ -196,6 +196,7 @@ APP_NAME=Perfum Lab API
 APP_VERSION=1.0.0
 DATABASE_URL=postgresql+psycopg://postgres:password@localhost:5432/perfumlab
 SECRET_KEY=change_this_secret_key
+JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 ```
@@ -236,6 +237,15 @@ La migracion de inventario crea:
 - el tipo PostgreSQL `tipo_movimiento_inventario`
 - `movimientos_inventario`
 
+Las migraciones de ventas, facturas y autenticacion crean:
+
+- `ventas`
+- `detalle_ventas`
+- `facturas`
+- el tipo PostgreSQL `rol_usuario`
+- `usuarios`
+- columnas y llaves foraneas nullable de auditoria hacia `usuarios`
+
 Para volver atras una migracion:
 
 ```powershell
@@ -271,6 +281,120 @@ GET http://127.0.0.1:8000/api/v1/health/db
 `/api/v1/health/db` ejecuta `SELECT 1` contra PostgreSQL. Si `DATABASE_URL` no
 esta configurado o PostgreSQL no esta disponible, responde con un error
 controlado sin exponer credenciales.
+
+### Autenticacion y usuarios
+
+La API usa access tokens JWT con `Authorization: Bearer <token>`. No hay refresh
+tokens en esta fase. El token incluye `sub`, `iat`, `exp` y `ver`; cada request
+protegido consulta PostgreSQL para validar que el usuario exista, este activo,
+mantenga la misma `token_version` y tenga el rol actual requerido.
+
+Antes de usar endpoints protegidos, crear el primer administrador localmente:
+
+```powershell
+uv run python scripts/create_admin.py
+```
+
+El script pide nombre, username, email opcional y contrasena con `getpass`. No
+recibe contrasenas por argumentos, no imprime hashes y no crea un registro
+publico.
+
+Para iniciar sesion:
+
+```text
+POST /api/v1/auth/login
+```
+
+El login usa formulario OAuth2 compatible con Swagger:
+
+```text
+username=admin
+password=...
+```
+
+Respuesta:
+
+```json
+{
+  "access_token": "...",
+  "token_type": "bearer"
+}
+```
+
+En Swagger (`/docs`) usar el boton `Authorize` y pegar el token Bearer. Endpoints
+de Auth:
+
+```text
+POST /api/v1/auth/login
+GET  /api/v1/auth/me
+POST /api/v1/auth/change-password
+```
+
+`GET /api/v1/auth/me` devuelve el usuario autenticado sin `password` ni
+`password_hash`. `POST /api/v1/auth/change-password` valida la contrasena actual,
+hashea la nueva con Argon2 y aumenta `token_version`, por lo que los tokens
+anteriores quedan invalidos.
+
+Endpoints de usuarios, solo para `ADMINISTRADOR`:
+
+```text
+POST   /api/v1/usuarios
+GET    /api/v1/usuarios
+GET    /api/v1/usuarios/{id}
+PATCH  /api/v1/usuarios/{id}
+DELETE /api/v1/usuarios/{id}
+POST   /api/v1/usuarios/{id}/reset-password
+```
+
+`DELETE` hace soft delete con `activo = false`. No borra fisicamente usuarios,
+porque ventas, movimientos y facturas conservan auditoria. El reset de password
+tambien incrementa `token_version`.
+
+Roles disponibles:
+
+```text
+ADMINISTRADOR
+VENDEDOR
+```
+
+Permisos principales:
+
+```text
+Publico:
+GET /
+GET /api/v1/health
+GET /api/v1/health/db
+POST /api/v1/auth/login
+
+Cualquier usuario autenticado:
+GET categorias, productos, clientes, inventario/movimientos, ventas, facturas
+GET /api/v1/auth/me
+POST /api/v1/auth/change-password
+
+ADMINISTRADOR o VENDEDOR:
+POST/PUT/PATCH clientes
+POST ventas
+POST ventas/{venta_id}/factura
+
+Solo ADMINISTRADOR:
+mutaciones de categorias y productos
+DELETE clientes
+movimientos manuales de inventario
+anular ventas
+reportes
+usuarios
+```
+
+Los usernames se guardan en minusculas y son unicos sin diferenciar
+mayusculas/minusculas. El email es opcional; si existe, tambien se normaliza a
+minusculas y es unico case-insensitive. Las contrasenas se guardan solamente
+como hash Argon2.
+
+Las nuevas ventas API guardan `ventas.usuario_id` con el usuario autenticado.
+Los movimientos de inventario guardan `movimientos_inventario.usuario_id`. Las
+facturas nuevas guardan `facturas.usuario_id`. Al anular una venta se guarda
+`ventas.anulada_por_usuario_id`, se crean movimientos `ENTRADA` con el admin que
+anulo, y si existe factura tambien queda `facturas.anulada_por_usuario_id`.
 
 ### Endpoints de categorias
 
@@ -581,7 +705,8 @@ desde la API en esta fase.
 ### Endpoints de reportes
 
 Los reportes son endpoints de solo lectura. No crean ventas, no modifican
-stock, no generan facturas y no escriben datos.
+stock, no generan facturas y no escriben datos. Todos requieren rol
+`ADMINISTRADOR`.
 
 ```text
 GET /api/v1/reportes/resumen

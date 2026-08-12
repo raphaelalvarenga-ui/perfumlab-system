@@ -1,8 +1,11 @@
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
+from app.api.dependencies.auth import get_current_user, require_roles
 from app.api.routes._errors import service_error_to_http
 from app.database.session import get_db
+from app.models.orm.usuario import UsuarioORM
+from app.models.tipos import RolUsuario
 from app.schemas.producto import (
     ProductoCreate,
     ProductoListResponse,
@@ -15,6 +18,7 @@ from app.services.productos_service import ProductosService
 
 
 router = APIRouter(prefix="/productos", tags=["Productos"])
+admin_required = require_roles(RolUsuario.ADMINISTRADOR)
 
 
 @router.get("", response_model=ProductoListResponse)
@@ -28,6 +32,7 @@ def listar_productos(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
+    _current_user: UsuarioORM = Depends(get_current_user),
 ):
     return ProductosService(db).listar_productos(
         buscar=buscar,
@@ -42,7 +47,11 @@ def listar_productos(
 
 
 @router.get("/{producto_id}", response_model=ProductoResponse)
-def obtener_producto(producto_id: int, db: Session = Depends(get_db)):
+def obtener_producto(
+    producto_id: int,
+    db: Session = Depends(get_db),
+    _current_user: UsuarioORM = Depends(get_current_user),
+):
     try:
         return ProductosService(db).obtener_producto(producto_id)
     except ServiceError as error:
@@ -54,7 +63,11 @@ def obtener_producto(producto_id: int, db: Session = Depends(get_db)):
     response_model=ProductoResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def crear_producto(payload: ProductoCreate, db: Session = Depends(get_db)):
+def crear_producto(
+    payload: ProductoCreate,
+    db: Session = Depends(get_db),
+    _admin: UsuarioORM = Depends(admin_required),
+):
     try:
         return ProductosService(db).crear_producto(payload.model_dump())
     except ServiceError as error:
@@ -66,6 +79,7 @@ def actualizar_producto(
     producto_id: int,
     payload: ProductoReplace,
     db: Session = Depends(get_db),
+    _admin: UsuarioORM = Depends(admin_required),
 ):
     try:
         return ProductosService(db).actualizar_producto(
@@ -81,6 +95,7 @@ def actualizar_producto_parcial(
     producto_id: int,
     payload: ProductoUpdate,
     db: Session = Depends(get_db),
+    _admin: UsuarioORM = Depends(admin_required),
 ):
     try:
         return ProductosService(db).actualizar_producto_parcial(
@@ -92,7 +107,11 @@ def actualizar_producto_parcial(
 
 
 @router.delete("/{producto_id}", response_model=ProductoResponse)
-def eliminar_producto(producto_id: int, db: Session = Depends(get_db)):
+def eliminar_producto(
+    producto_id: int,
+    db: Session = Depends(get_db),
+    _admin: UsuarioORM = Depends(admin_required),
+):
     try:
         return ProductosService(db).eliminar_producto(producto_id)
     except ServiceError as error:

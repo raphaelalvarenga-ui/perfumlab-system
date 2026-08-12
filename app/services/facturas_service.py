@@ -16,7 +16,7 @@ class FacturasService:
         self.repository = FacturasRepository(db)
         self.ventas_repository = VentasRepository(db)
 
-    def generar_factura(self, venta_id: int):
+    def generar_factura(self, venta_id: int, *, usuario_id: int):
         try:
             venta = self.ventas_repository.get_by_id_for_update(venta_id)
             if venta is None:
@@ -34,6 +34,7 @@ class FacturasService:
                     "subtotal": venta.subtotal,
                     "total": venta.total,
                     "estado": EstadoFactura.EMITIDA,
+                    "usuario_id": usuario_id,
                 }
             )
             factura_id = factura.id

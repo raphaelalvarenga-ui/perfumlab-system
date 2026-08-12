@@ -26,7 +26,7 @@ class VentasService:
         self.facturas_repository = FacturasRepository(db)
         self.stock_service = StockService(db)
 
-    def registrar_venta(self, datos: dict):
+    def registrar_venta(self, datos: dict, *, usuario_id: int):
         try:
             cantidades = self._agrupar_productos(datos["productos"])
             cliente = self._obtener_cliente_para_venta(datos.get("cliente_id"))
@@ -38,7 +38,7 @@ class VentasService:
                 {
                     "cliente_id": cliente.id if cliente else None,
                     "cliente_nombre": cliente.nombre if cliente else CLIENTE_MOSTRADOR,
-                    "usuario_id": None,
+                    "usuario_id": usuario_id,
                     "estado": EstadoVenta.COMPLETADA,
                     "subtotal": total,
                     "total": total,
@@ -62,7 +62,7 @@ class VentasService:
                     producto,
                     cantidad=item["cantidad"],
                     motivo=f"Venta #{venta.id}",
-                    usuario_id=None,
+                    usuario_id=usuario_id,
                     mensaje_stock_insuficiente=(
                         f"No hay suficiente stock para el producto {producto.nombre}."
                     ),
@@ -107,7 +107,7 @@ class VentasService:
             raise NotFoundError("Venta no encontrada.")
         return venta
 
-    def anular_venta(self, venta_id: int, datos: dict):
+    def anular_venta(self, venta_id: int, datos: dict, *, usuario_id: int):
         motivo = datos["motivo"].strip()
         try:
             venta = self.repository.get_by_id_for_update(venta_id)
@@ -124,13 +124,14 @@ class VentasService:
                     producto,
                     cantidad=detalle.cantidad,
                     motivo=f"Anulacion de venta #{venta.id}: {motivo}",
-                    usuario_id=None,
+                    usuario_id=usuario_id,
                     requiere_activo=False,
                 )
 
             venta.estado = EstadoVenta.ANULADA
             venta.anulada_at = utc_now()
             venta.motivo_anulacion = motivo
+            venta.anulada_por_usuario_id = usuario_id
             self.db.flush()
 
             factura = self.facturas_repository.get_by_venta_id(venta.id)
@@ -139,6 +140,7 @@ class VentasService:
                     factura,
                     motivo=motivo,
                     anulada_at=venta.anulada_at,
+                    anulada_por_usuario_id=usuario_id,
                 )
 
             venta_id = venta.id

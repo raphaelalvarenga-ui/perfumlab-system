@@ -312,8 +312,21 @@ def test_atomicidad_anulacion_facturada_rollback_completo(client, monkeypatch):
     assert obtener_producto(client, producto["id"])["stock_actual"] == 8
     original_mark = FacturasRepository.mark_anulada
 
-    def fallar_mark(self, factura_obj, *, motivo, anulada_at):
-        original_mark(self, factura_obj, motivo=motivo, anulada_at=anulada_at)
+    def fallar_mark(
+        self,
+        factura_obj,
+        *,
+        motivo,
+        anulada_at,
+        anulada_por_usuario_id=None,
+    ):
+        original_mark(
+            self,
+            factura_obj,
+            motivo=motivo,
+            anulada_at=anulada_at,
+            anulada_por_usuario_id=anulada_por_usuario_id,
+        )
         raise RuntimeError("fallo controlado anulacion factura")
 
     monkeypatch.setattr(FacturasRepository, "mark_anulada", fallar_mark)

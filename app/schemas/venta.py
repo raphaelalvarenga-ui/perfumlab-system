@@ -67,6 +67,7 @@ class VentaResponse(BaseModel):
     created_at: datetime
     anulada_at: datetime | None = None
     motivo_anulacion: str | None = None
+    anulada_por_usuario_id: int | None = None
 
     model_config = ConfigDict(from_attributes=True)
 

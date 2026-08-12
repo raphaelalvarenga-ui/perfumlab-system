@@ -85,10 +85,12 @@ class FacturasRepository:
         *,
         motivo: str,
         anulada_at: datetime,
+        anulada_por_usuario_id: int | None = None,
     ) -> FacturaORM:
         factura.estado = EstadoFactura.ANULADA
         factura.anulada_at = anulada_at
         factura.motivo_anulacion = motivo
+        factura.anulada_por_usuario_id = anulada_por_usuario_id
         self.db.flush()
         return factura
 

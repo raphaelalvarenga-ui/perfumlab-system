@@ -41,7 +41,10 @@ class MovimientoInventarioORM(Base):
     stock_anterior: Mapped[int] = mapped_column(Integer, nullable=False)
     stock_nuevo: Mapped[int] = mapped_column(Integer, nullable=False)
     motivo: Mapped[str] = mapped_column(Text, nullable=False)
-    usuario_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    usuario_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL"),
+        index=True,
+    )
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -50,6 +53,10 @@ class MovimientoInventarioORM(Base):
 
     producto: Mapped["ProductoORM"] = relationship(
         back_populates="movimientos_inventario"
+    )
+    usuario: Mapped["UsuarioORM | None"] = relationship(
+        back_populates="movimientos_inventario",
+        foreign_keys=[usuario_id],
     )
 
     __table_args__ = (

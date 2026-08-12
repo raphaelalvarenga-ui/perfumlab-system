@@ -15,28 +15,31 @@ class InventarioService:
         self.repository = InventarioRepository(db)
         self.stock_service = StockService(db)
 
-    def registrar_entrada(self, datos: dict):
+    def registrar_entrada(self, datos: dict, *, usuario_id: int):
         return self._ejecutar_con_commit(
             self.stock_service.registrar_entrada,
             producto_id=datos["producto_id"],
             cantidad=datos["cantidad"],
             motivo=datos["motivo"],
+            usuario_id=usuario_id,
         )
 
-    def registrar_salida(self, datos: dict):
+    def registrar_salida(self, datos: dict, *, usuario_id: int):
         return self._ejecutar_con_commit(
             self.stock_service.registrar_salida,
             producto_id=datos["producto_id"],
             cantidad=datos["cantidad"],
             motivo=datos["motivo"],
+            usuario_id=usuario_id,
         )
 
-    def registrar_ajuste(self, datos: dict):
+    def registrar_ajuste(self, datos: dict, *, usuario_id: int):
         return self._ejecutar_con_commit(
             self.stock_service.registrar_ajuste,
             producto_id=datos["producto_id"],
             stock_nuevo=datos["stock_nuevo"],
             motivo=datos["motivo"],
+            usuario_id=usuario_id,
         )
 
     def listar_movimientos(

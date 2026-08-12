@@ -15,3 +15,8 @@ class EstadoVenta(str, Enum):
 class EstadoFactura(str, Enum):
     EMITIDA = "EMITIDA"
     ANULADA = "ANULADA"
+
+
+class RolUsuario(str, Enum):
+    ADMINISTRADOR = "ADMINISTRADOR"
+    VENDEDOR = "VENDEDOR"

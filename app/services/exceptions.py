@@ -10,6 +10,15 @@ class BadRequestError(ServiceError):
     status_code = 400
 
 
+class UnauthorizedError(ServiceError):
+    status_code = 401
+    headers = {"WWW-Authenticate": "Bearer"}
+
+
+class ForbiddenError(ServiceError):
+    status_code = 403
+
+
 class NotFoundError(ServiceError):
     status_code = 404
 

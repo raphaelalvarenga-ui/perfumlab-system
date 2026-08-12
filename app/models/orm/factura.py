@@ -3,7 +3,16 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Index, Numeric, String, Text
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Numeric,
+    String,
+    Text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
@@ -30,6 +39,10 @@ class FacturaORM(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     numero: Mapped[str] = mapped_column(String(20), nullable=False)
     venta_id: Mapped[int] = mapped_column(ForeignKey("ventas.id"), nullable=False)
+    usuario_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL"),
+        index=True,
+    )
     cliente_nombre: Mapped[str] = mapped_column(String(120), nullable=False)
     subtotal: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
     total: Mapped[Decimal] = mapped_column(Numeric(12, 2), nullable=False)
@@ -45,8 +58,20 @@ class FacturaORM(Base):
     )
     anulada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     motivo_anulacion: Mapped[str | None] = mapped_column(Text)
+    anulada_por_usuario_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL"),
+        index=True,
+    )
 
     venta: Mapped["VentaORM"] = relationship(back_populates="factura")
+    usuario: Mapped["UsuarioORM | None"] = relationship(
+        back_populates="facturas_emitidas",
+        foreign_keys=[usuario_id],
+    )
+    anulada_por_usuario: Mapped["UsuarioORM | None"] = relationship(
+        back_populates="facturas_anuladas",
+        foreign_keys=[anulada_por_usuario_id],
+    )
 
     @property
     def detalles(self):

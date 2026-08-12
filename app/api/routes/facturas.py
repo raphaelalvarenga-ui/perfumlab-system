@@ -3,15 +3,21 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, Query, status
 from sqlalchemy.orm import Session
 
+from app.api.dependencies.auth import get_current_user, require_roles
 from app.api.routes._errors import service_error_to_http
 from app.database.session import get_db
-from app.models.tipos import EstadoFactura
+from app.models.orm.usuario import UsuarioORM
+from app.models.tipos import EstadoFactura, RolUsuario
 from app.schemas.factura import FacturaListResponse, FacturaResponse
 from app.services.exceptions import ServiceError
 from app.services.facturas_service import FacturasService
 
 
 router = APIRouter(tags=["Facturas"])
+vendedor_or_admin_required = require_roles(
+    RolUsuario.ADMINISTRADOR,
+    RolUsuario.VENDEDOR,
+)
 
 
 @router.post(
@@ -19,9 +25,13 @@ router = APIRouter(tags=["Facturas"])
     response_model=FacturaResponse,
     status_code=status.HTTP_201_CREATED,
 )
-def generar_factura(venta_id: int, db: Session = Depends(get_db)):
+def generar_factura(
+    venta_id: int,
+    db: Session = Depends(get_db),
+    actor: UsuarioORM = Depends(vendedor_or_admin_required),
+):
     try:
-        return FacturasService(db).generar_factura(venta_id)
+        return FacturasService(db).generar_factura(venta_id, usuario_id=actor.id)
     except ServiceError as error:
         raise service_error_to_http(error) from error
 
@@ -36,6 +46,7 @@ def listar_facturas(
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
+    _current_user: UsuarioORM = Depends(get_current_user),
 ):
     return FacturasService(db).listar_facturas(
         venta_id=venta_id,
@@ -49,7 +60,11 @@ def listar_facturas(
 
 
 @router.get("/facturas/numero/{numero}", response_model=FacturaResponse)
-def obtener_factura_por_numero(numero: str, db: Session = Depends(get_db)):
+def obtener_factura_por_numero(
+    numero: str,
+    db: Session = Depends(get_db),
+    _current_user: UsuarioORM = Depends(get_current_user),
+):
     try:
         return FacturasService(db).obtener_por_numero(numero)
     except ServiceError as error:
@@ -57,7 +72,11 @@ def obtener_factura_por_numero(numero: str, db: Session = Depends(get_db)):
 
 
 @router.get("/facturas/{factura_id}", response_model=FacturaResponse)
-def obtener_factura(factura_id: int, db: Session = Depends(get_db)):
+def obtener_factura(
+    factura_id: int,
+    db: Session = Depends(get_db),
+    _current_user: UsuarioORM = Depends(get_current_user),
+):
     try:
         return FacturasService(db).obtener_factura(factura_id)
     except ServiceError as error:

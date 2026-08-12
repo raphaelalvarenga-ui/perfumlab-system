@@ -3,7 +3,17 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from decimal import Decimal
 
-from sqlalchemy import CheckConstraint, DateTime, Enum, ForeignKey, Index, Integer, Numeric, String, Text
+from sqlalchemy import (
+    CheckConstraint,
+    DateTime,
+    Enum,
+    ForeignKey,
+    Index,
+    Integer,
+    Numeric,
+    String,
+    Text,
+)
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
@@ -37,7 +47,10 @@ class VentaORM(Base):
         nullable=False,
         default="Cliente mostrador",
     )
-    usuario_id: Mapped[int | None] = mapped_column(Integer, index=True)
+    usuario_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL"),
+        index=True,
+    )
     estado: Mapped[EstadoVenta] = mapped_column(
         estado_venta_enum,
         nullable=False,
@@ -61,8 +74,20 @@ class VentaORM(Base):
     )
     anulada_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     motivo_anulacion: Mapped[str | None] = mapped_column(Text)
+    anulada_por_usuario_id: Mapped[int | None] = mapped_column(
+        ForeignKey("usuarios.id", ondelete="SET NULL"),
+        index=True,
+    )
 
     cliente: Mapped["ClienteORM | None"] = relationship(back_populates="ventas")
+    usuario: Mapped["UsuarioORM | None"] = relationship(
+        back_populates="ventas_creadas",
+        foreign_keys=[usuario_id],
+    )
+    anulada_por_usuario: Mapped["UsuarioORM | None"] = relationship(
+        back_populates="ventas_anuladas",
+        foreign_keys=[anulada_por_usuario_id],
+    )
     detalles: Mapped[list["DetalleVentaORM"]] = relationship(
         back_populates="venta",
         order_by="DetalleVentaORM.id",

@@ -12,6 +12,8 @@ def _validar_motivo(value: str) -> str:
 
 
 class InventarioBase(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     producto_id: int = Field(..., ge=1, examples=[1])
     motivo: str = Field(..., examples=["Compra de mercaderia"])
 
@@ -30,6 +32,8 @@ class InventarioSalida(InventarioBase):
 
 
 class InventarioAjuste(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     producto_id: int = Field(..., ge=1, examples=[1])
     stock_nuevo: int = Field(..., ge=0, examples=[15])
     motivo: str = Field(..., examples=["Conteo fisico"])

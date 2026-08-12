@@ -4,4 +4,8 @@ from app.services.exceptions import ServiceError
 
 
 def service_error_to_http(error: ServiceError) -> HTTPException:
-    return HTTPException(status_code=error.status_code, detail=error.detail)
+    return HTTPException(
+        status_code=error.status_code,
+        detail=error.detail,
+        headers=getattr(error, "headers", None),
+    )

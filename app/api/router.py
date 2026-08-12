@@ -2,12 +2,14 @@ from fastapi import APIRouter, HTTPException, status
 from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
+from app.api.routes.auth import router as auth_router
 from app.api.routes.categorias import router as categorias_router
 from app.api.routes.clientes import router as clientes_router
 from app.api.routes.facturas import router as facturas_router
 from app.api.routes.inventario import router as inventario_router
 from app.api.routes.productos import router as productos_router
 from app.api.routes.reportes import router as reportes_router
+from app.api.routes.usuarios import router as usuarios_router
 from app.api.routes.ventas import router as ventas_router
 from app.database.session import SessionLocal
 
@@ -49,9 +51,11 @@ def database_health_check():
 
 
 api_router.include_router(categorias_router)
+api_router.include_router(auth_router)
 api_router.include_router(clientes_router)
 api_router.include_router(inventario_router)
 api_router.include_router(productos_router)
 api_router.include_router(ventas_router)
 api_router.include_router(facturas_router)
 api_router.include_router(reportes_router)
+api_router.include_router(usuarios_router)

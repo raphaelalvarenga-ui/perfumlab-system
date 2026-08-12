@@ -8,6 +8,7 @@ class Settings(BaseSettings):
     app_version: str = "1.0.0"
     database_url: str | None = None
     secret_key: str = "change_this_secret_key"
+    jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
 

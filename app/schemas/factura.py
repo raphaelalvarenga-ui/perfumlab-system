@@ -16,6 +16,7 @@ class FacturaResponse(BaseModel):
     id: int
     numero: str
     venta_id: int
+    usuario_id: int | None = None
     cliente_nombre: str
     subtotal: Decimal
     total: Decimal
@@ -23,6 +24,7 @@ class FacturaResponse(BaseModel):
     created_at: datetime
     anulada_at: datetime | None = None
     motivo_anulacion: str | None = None
+    anulada_por_usuario_id: int | None = None
     detalles: list[DetalleVentaResponse]
 
     model_config = ConfigDict(from_attributes=True)
