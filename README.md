@@ -432,6 +432,89 @@ GET /api/v1/clientes?page=1&limit=20
 `buscar` revisa nombre, correo y telefono. `limit` acepta como maximo 100
 registros por pagina.
 
+### Endpoints de ventas
+
+```text
+POST /api/v1/ventas
+
+GET  /api/v1/ventas
+GET  /api/v1/ventas/{id}
+
+POST /api/v1/ventas/{id}/anular
+```
+
+Una venta se crea enviando solamente cliente opcional y productos. El servidor
+toma precios desde PostgreSQL, calcula subtotales/total, descuenta stock y crea
+movimientos de inventario `SALIDA`.
+
+```json
+{
+  "cliente_id": 1,
+  "productos": [
+    {
+      "producto_id": 10,
+      "cantidad": 2
+    },
+    {
+      "producto_id": 20,
+      "cantidad": 1
+    }
+  ]
+}
+```
+
+Para venta de mostrador se puede enviar `cliente_id = null` o no enviarlo. La
+venta queda con:
+
+```text
+cliente_id = NULL
+cliente_nombre = Cliente mostrador
+```
+
+Si el request trae productos repetidos, la API los agrupa antes de procesar la
+venta. Por ejemplo, dos lineas para el producto `5` con cantidades `2` y `3`
+se guardan como una linea de cantidad `5`.
+
+Los detalles guardan snapshots historicos de:
+
+```text
+producto_sku
+producto_nombre
+precio_unitario
+```
+
+Si despues cambia el producto, la venta historica conserva los datos originales.
+El frontend no puede enviar precio, subtotal, total, estado, stock ni usuario.
+
+El listado de ventas permite:
+
+```text
+GET /api/v1/ventas?cliente_id=1
+GET /api/v1/ventas?estado=COMPLETADA
+GET /api/v1/ventas?estado=ANULADA
+GET /api/v1/ventas?desde=2026-08-12T00:00:00Z
+GET /api/v1/ventas?hasta=2026-08-12T23:59:59Z
+GET /api/v1/ventas?page=1&limit=20
+```
+
+Para anular una venta:
+
+```json
+{
+  "motivo": "Cliente cancelo la compra"
+}
+```
+
+La anulacion bloquea la venta, valida que siga `COMPLETADA`, devuelve el stock
+con movimientos de inventario `ENTRADA`, guarda `anulada_at` y
+`motivo_anulacion`, y cambia el estado a `ANULADA`. Una venta anulada no puede
+anularse de nuevo.
+
+Crear o anular ventas es atomico: venta, detalles, cambios de stock y
+movimientos de inventario se hacen en una sola transaccion PostgreSQL. Si falla
+cualquier paso, se revierte todo. Para evitar carreras de stock, los productos
+se bloquean con `SELECT ... FOR UPDATE` en orden de `producto_id`.
+
 ## Notas sobre carpetas generadas
 
 Las carpetas `dist`, `dist_actualizado`, `build` y `build_actualizado` son

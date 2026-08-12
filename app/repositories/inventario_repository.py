@@ -20,6 +20,18 @@ class InventarioRepository:
         )
         return self.db.execute(statement).scalar_one_or_none()
 
+    def get_productos_for_update(self, producto_ids: list[int]) -> list[ProductoORM]:
+        if not producto_ids:
+            return []
+
+        statement = (
+            select(ProductoORM)
+            .where(ProductoORM.id.in_(producto_ids))
+            .order_by(ProductoORM.id.asc())
+            .with_for_update()
+        )
+        return list(self.db.execute(statement).scalars())
+
     def update_stock(self, producto: ProductoORM, stock_nuevo: int) -> ProductoORM:
         producto.stock_actual = stock_nuevo
         self.db.flush()

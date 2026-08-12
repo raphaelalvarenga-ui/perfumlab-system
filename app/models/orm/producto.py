@@ -79,6 +79,9 @@ class ProductoORM(Base):
     movimientos_inventario: Mapped[list["MovimientoInventarioORM"]] = relationship(
         back_populates="producto"
     )
+    detalles_venta: Mapped[list["DetalleVentaORM"]] = relationship(
+        back_populates="producto"
+    )
 
     __table_args__ = (
         CheckConstraint("costo >= 0", name="ck_productos_costo_no_negativo"),

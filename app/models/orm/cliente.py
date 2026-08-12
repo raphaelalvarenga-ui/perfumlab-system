@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from sqlalchemy import Boolean, DateTime, Index, String, Text, func
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database.base import Base
 
@@ -30,6 +30,8 @@ class ClienteORM(Base):
         DateTime(timezone=True),
         onupdate=utc_now,
     )
+
+    ventas: Mapped[list["VentaORM"]] = relationship(back_populates="cliente")
 
     __table_args__ = (
         Index(
