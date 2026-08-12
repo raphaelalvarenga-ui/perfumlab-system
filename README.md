@@ -578,6 +578,70 @@ factura como `ANULADA`. La factura no se borra y conserva numero y detalles.
 No existen endpoints para editar, borrar, reactivar o generar PDF de facturas
 desde la API en esta fase.
 
+### Endpoints de reportes
+
+Los reportes son endpoints de solo lectura. No crean ventas, no modifican
+stock, no generan facturas y no escriben datos.
+
+```text
+GET /api/v1/reportes/resumen
+GET /api/v1/reportes/ventas
+GET /api/v1/reportes/productos-mas-vendidos
+GET /api/v1/reportes/stock-bajo
+```
+
+Los reportes financieros aceptan filtros de fecha ISO `YYYY-MM-DD`:
+
+```text
+GET /api/v1/reportes/resumen?desde=2026-08-01&hasta=2026-08-31
+GET /api/v1/reportes/ventas?desde=2026-08-01&hasta=2026-08-31&agrupar=dia
+GET /api/v1/reportes/ventas?desde=2026-01-01&hasta=2026-12-31&agrupar=mes
+GET /api/v1/reportes/productos-mas-vendidos?desde=2026-08-01&hasta=2026-08-31&limit=10
+```
+
+El dia `hasta` se incluye completo usando un limite superior exclusivo: por
+ejemplo, `hasta=2026-08-31` consulta registros con `created_at < 2026-09-01
+00:00:00`.
+
+Las ventas `ANULADA` no cuentan como ingresos, unidades vendidas, productos mas
+vendidos ni ventas exitosas. Solo aparecen en metricas separadas, como
+`ventas_anuladas`. Las facturas validas cuentan solamente si estan `EMITIDA`;
+las facturas `ANULADA` se reportan por separado.
+
+`GET /api/v1/reportes/resumen` devuelve metricas para dashboard:
+
+```json
+{
+  "periodo": {
+    "desde": "2026-08-01",
+    "hasta": "2026-08-31"
+  },
+  "ventas_completadas": 25,
+  "ventas_anuladas": 2,
+  "ingresos_totales": "12450.00",
+  "ticket_promedio": "498.00",
+  "unidades_vendidas": 56,
+  "facturas_emitidas": 20,
+  "facturas_anuladas": 1,
+  "productos_stock_bajo": 4
+}
+```
+
+`GET /api/v1/reportes/ventas` genera la tendencia para una futura grafica. El
+parametro `agrupar` acepta `dia` o `mes`, y los periodos salen en orden
+cronologico ascendente.
+
+`GET /api/v1/reportes/productos-mas-vendidos` usa `detalle_ventas.cantidad` y
+`detalle_ventas.subtotal`, por lo que respeta precios, SKU y nombres historicos
+guardados al momento de vender. No recalcula ingresos con el precio actual del
+producto. `limit` acepta valores de 1 a 100.
+
+`GET /api/v1/reportes/stock-bajo?page=1&limit=20` lista productos activos con
+`stock_actual <= stock_minimo`. Este reporte representa el inventario actual y
+no depende del rango historico de fechas. El campo `faltante_minimo` se calcula
+como `max(stock_minimo - stock_actual, 0)` y se ordenan primero los productos
+con mayor deficit.
+
 ## Notas sobre carpetas generadas
 
 Las carpetas `dist`, `dist_actualizado`, `build` y `build_actualizado` son
