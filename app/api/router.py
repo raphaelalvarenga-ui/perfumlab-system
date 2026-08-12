@@ -3,6 +3,7 @@ from sqlalchemy import text
 from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.routes.categorias import router as categorias_router
+from app.api.routes.clientes import router as clientes_router
 from app.api.routes.productos import router as productos_router
 from app.database.session import SessionLocal
 
@@ -44,4 +45,5 @@ def database_health_check():
 
 
 api_router.include_router(categorias_router)
+api_router.include_router(clientes_router)
 api_router.include_router(productos_router)

@@ -227,6 +227,10 @@ La migracion inicial de la API crea las tablas:
 - `categorias`
 - `productos`
 
+La migracion de clientes crea la tabla:
+
+- `clientes`
+
 Para volver atras una migracion:
 
 ```powershell
@@ -309,6 +313,56 @@ GET /api/v1/productos?page=1&limit=20
 ```
 
 `limit` acepta como maximo 100 registros por pagina.
+
+### Endpoints de clientes
+
+```text
+GET    /api/v1/clientes
+GET    /api/v1/clientes/{id}
+POST   /api/v1/clientes
+PUT    /api/v1/clientes/{id}
+PATCH  /api/v1/clientes/{id}
+DELETE /api/v1/clientes/{id}
+```
+
+`DELETE` no borra fisicamente el cliente; lo desactiva con `activo = false`.
+
+Ejemplo de cliente completo:
+
+```json
+{
+  "nombre": "Juan Perez",
+  "correo": "juan@example.com",
+  "telefono": "9999-9999",
+  "direccion": "La Paz"
+}
+```
+
+Tambien se permite registrar clientes sin correo:
+
+```json
+{
+  "nombre": "Cliente mostrador",
+  "correo": null,
+  "telefono": null,
+  "direccion": null
+}
+```
+
+Cuando el correo viene informado, se valida, se normaliza a minusculas y debe
+ser unico sin diferenciar mayusculas/minusculas. Los clientes sin correo se
+guardan con `correo = NULL`, por lo que pueden existir varios.
+
+El listado de clientes permite:
+
+```text
+GET /api/v1/clientes?buscar=juan
+GET /api/v1/clientes?activo=true
+GET /api/v1/clientes?page=1&limit=20
+```
+
+`buscar` revisa nombre, correo y telefono. `limit` acepta como maximo 100
+registros por pagina.
 
 ## Notas sobre carpetas generadas
 
