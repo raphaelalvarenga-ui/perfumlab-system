@@ -6,8 +6,9 @@ from sqlalchemy.orm import Session
 from app.models.orm.cliente import ClienteORM
 from app.models.orm.producto import ProductoORM
 from app.models.orm.venta import utc_now
-from app.models.tipos import EstadoVenta
+from app.models.tipos import EstadoFactura, EstadoVenta
 from app.repositories.clientes_repository import ClienteRepository
+from app.repositories.facturas_repository import FacturasRepository
 from app.repositories.ventas_repository import VentasRepository
 from app.schemas.venta import VentaListResponse
 from app.services.exceptions import BadRequestError, ConflictError, NotFoundError
@@ -22,6 +23,7 @@ class VentasService:
         self.db = db
         self.repository = VentasRepository(db)
         self.clientes_repository = ClienteRepository(db)
+        self.facturas_repository = FacturasRepository(db)
         self.stock_service = StockService(db)
 
     def registrar_venta(self, datos: dict):
@@ -130,6 +132,14 @@ class VentasService:
             venta.anulada_at = utc_now()
             venta.motivo_anulacion = motivo
             self.db.flush()
+
+            factura = self.facturas_repository.get_by_venta_id(venta.id)
+            if factura is not None and factura.estado == EstadoFactura.EMITIDA:
+                self.facturas_repository.mark_anulada(
+                    factura,
+                    motivo=motivo,
+                    anulada_at=venta.anulada_at,
+                )
 
             venta_id = venta.id
             self.db.commit()

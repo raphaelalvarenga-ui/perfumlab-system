@@ -515,6 +515,69 @@ movimientos de inventario se hacen en una sola transaccion PostgreSQL. Si falla
 cualquier paso, se revierte todo. Para evitar carreras de stock, los productos
 se bloquean con `SELECT ... FOR UPDATE` en orden de `producto_id`.
 
+### Endpoints de facturas
+
+```text
+POST /api/v1/ventas/{venta_id}/factura
+
+GET  /api/v1/facturas
+GET  /api/v1/facturas/{id}
+GET  /api/v1/facturas/numero/{numero}
+```
+
+La factura se genera desde una venta existente. El frontend no envia numero,
+cliente, subtotal, total ni estado; la API toma esos valores desde la venta y
+guarda snapshots historicos.
+
+Ejemplo:
+
+```text
+POST /api/v1/ventas/15/factura
+```
+
+Una factura nueva nace como `EMITIDA`. La numeracion conserva el formato:
+
+```text
+FAC-000015
+```
+
+El numero se deriva del `venta_id`, por lo que no usa `MAX(numero)+1` y queda
+protegido por indices unicos junto con la regla de una factura por venta.
+
+Solo se facturan ventas `COMPLETADA`. Una venta `ANULADA` responde `409
+Conflict`, y una venta que ya tiene factura tambien responde `409 Conflict`.
+
+La factura conserva:
+
+```text
+cliente_nombre
+subtotal
+total
+```
+
+Los detalles mostrados salen de `detalle_ventas`, que ya guarda snapshots de
+producto, SKU, precio unitario, cantidad y subtotal. No se recalculan precios
+actuales de productos para representar facturas historicas.
+
+El listado de facturas permite:
+
+```text
+GET /api/v1/facturas?venta_id=15
+GET /api/v1/facturas?estado=EMITIDA
+GET /api/v1/facturas?estado=ANULADA
+GET /api/v1/facturas?buscar=FAC-000015
+GET /api/v1/facturas?buscar=Juan
+GET /api/v1/facturas?desde=2026-08-12T00:00:00Z
+GET /api/v1/facturas?hasta=2026-08-12T23:59:59Z
+GET /api/v1/facturas?page=1&limit=20
+```
+
+Si una venta facturada se anula, la misma transaccion devuelve stock, registra
+movimientos de inventario `ENTRADA`, marca la venta como `ANULADA` y marca su
+factura como `ANULADA`. La factura no se borra y conserva numero y detalles.
+No existen endpoints para editar, borrar, reactivar o generar PDF de facturas
+desde la API en esta fase.
+
 ## Notas sobre carpetas generadas
 
 Las carpetas `dist`, `dist_actualizado`, `build` y `build_actualizado` son

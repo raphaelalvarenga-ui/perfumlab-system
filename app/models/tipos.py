@@ -10,3 +10,8 @@ class TipoMovimientoInventario(str, Enum):
 class EstadoVenta(str, Enum):
     COMPLETADA = "COMPLETADA"
     ANULADA = "ANULADA"
+
+
+class EstadoFactura(str, Enum):
+    EMITIDA = "EMITIDA"
+    ANULADA = "ANULADA"

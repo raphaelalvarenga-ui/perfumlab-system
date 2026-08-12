@@ -67,6 +67,10 @@ class VentaORM(Base):
         back_populates="venta",
         order_by="DetalleVentaORM.id",
     )
+    factura: Mapped["FacturaORM | None"] = relationship(
+        back_populates="venta",
+        uselist=False,
+    )
 
     __table_args__ = (
         CheckConstraint("subtotal >= 0", name="ck_ventas_subtotal_no_negativo"),

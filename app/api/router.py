@@ -4,6 +4,7 @@ from sqlalchemy.exc import SQLAlchemyError
 
 from app.api.routes.categorias import router as categorias_router
 from app.api.routes.clientes import router as clientes_router
+from app.api.routes.facturas import router as facturas_router
 from app.api.routes.inventario import router as inventario_router
 from app.api.routes.productos import router as productos_router
 from app.api.routes.ventas import router as ventas_router
@@ -51,3 +52,4 @@ api_router.include_router(clientes_router)
 api_router.include_router(inventario_router)
 api_router.include_router(productos_router)
 api_router.include_router(ventas_router)
+api_router.include_router(facturas_router)
