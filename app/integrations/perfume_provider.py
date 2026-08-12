@@ -10,6 +10,30 @@ class ProviderNotConfiguredError(RuntimeError):
     pass
 
 
+class ProviderAuthenticationError(RuntimeError):
+    pass
+
+
+class ProviderBadRequestError(RuntimeError):
+    pass
+
+
+class ProviderNotFoundError(RuntimeError):
+    pass
+
+
+class ProviderRateLimitError(RuntimeError):
+    pass
+
+
+class ProviderUnavailableError(RuntimeError):
+    pass
+
+
+class ProviderInvalidResponseError(RuntimeError):
+    pass
+
+
 @dataclass(slots=True)
 class ExternalAccord:
     nombre: str
@@ -46,8 +70,9 @@ class ExternalFragrance:
 class PerfumeProvider(Protocol):
     def search_fragrances(
         self,
-        nombre: str,
+        query: str,
         marca: str | None = None,
+        limit: int = 5,
     ) -> list[ExternalFragrance]:
         ...
 
@@ -55,4 +80,7 @@ class PerfumeProvider(Protocol):
         ...
 
     def get_similar(self, nombre: str, limit: int = 10) -> list[ExternalFragrance]:
+        ...
+
+    def get_usage(self) -> dict:
         ...

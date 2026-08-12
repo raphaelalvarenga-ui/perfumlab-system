@@ -25,3 +25,15 @@ class NotFoundError(ServiceError):
 
 class ConflictError(ServiceError):
     status_code = 409
+
+
+class TooManyRequestsError(ServiceError):
+    status_code = 429
+
+
+class BadGatewayError(ServiceError):
+    status_code = 502
+
+
+class ServiceUnavailableError(ServiceError):
+    status_code = 503

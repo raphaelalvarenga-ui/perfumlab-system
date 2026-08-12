@@ -13,6 +13,7 @@ from sqlalchemy import (
     Numeric,
     String,
     Text,
+    UniqueConstraint,
     func,
 )
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -65,6 +66,8 @@ class ProductoORM(Base):
     external_provider: Mapped[str | None] = mapped_column(String(80))
     external_id: Mapped[str | None] = mapped_column(String(120))
     external_last_sync: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
+    external_image_url: Mapped[str | None] = mapped_column(Text)
+    external_transparent_image_url: Mapped[str | None] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True),
         nullable=False,
@@ -108,4 +111,9 @@ class ProductoORM(Base):
         ),
         CheckConstraint("ml IS NULL OR ml > 0", name="ck_productos_ml_positivo"),
         Index("ix_productos_sku_lower", func.lower(sku), unique=True),
+        UniqueConstraint(
+            "external_provider",
+            "external_id",
+            name="uq_productos_external_provider_external_id",
+        ),
     )

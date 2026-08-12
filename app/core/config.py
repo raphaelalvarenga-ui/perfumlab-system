@@ -14,6 +14,7 @@ class Settings(BaseSettings):
     perfume_provider: str = "fragella"
     fragella_api_key: str | None = None
     fragella_base_url: str = "https://api.fragella.com/api/v1"
+    fragella_timeout_seconds: float = 10.0
 
     model_config = SettingsConfigDict(
         env_file=".env",

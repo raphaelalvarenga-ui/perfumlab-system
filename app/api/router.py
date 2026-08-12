@@ -8,6 +8,7 @@ from app.api.routes.categorias import router as categorias_router
 from app.api.routes.clientes import router as clientes_router
 from app.api.routes.facturas import router as facturas_router
 from app.api.routes.inventario import router as inventario_router
+from app.api.routes.integraciones import router as integraciones_router
 from app.api.routes.notas import router as notas_router
 from app.api.routes.productos import router as productos_router
 from app.api.routes.reportes import router as reportes_router
@@ -57,6 +58,7 @@ api_router.include_router(auth_router)
 api_router.include_router(acordes_router)
 api_router.include_router(clientes_router)
 api_router.include_router(inventario_router)
+api_router.include_router(integraciones_router)
 api_router.include_router(notas_router)
 api_router.include_router(productos_router)
 api_router.include_router(ventas_router)

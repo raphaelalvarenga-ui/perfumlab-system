@@ -59,6 +59,8 @@ class ProductoBase(BaseModel):
     external_provider: str | None = None
     external_id: str | None = None
     external_last_sync: datetime | None = None
+    external_image_url: str | None = None
+    external_transparent_image_url: str | None = None
 
     @field_validator("sku")
     @classmethod
@@ -137,6 +139,16 @@ class ProductoBase(BaseModel):
     def validar_external_id(cls, value: str | None) -> str | None:
         return _validar_texto_nullable(value, "external_id", 120)
 
+    @field_validator("external_image_url")
+    @classmethod
+    def validar_external_image_url(cls, value: str | None) -> str | None:
+        return _validar_texto_nullable(value, "external_image_url", 500)
+
+    @field_validator("external_transparent_image_url")
+    @classmethod
+    def validar_external_transparent_image_url(cls, value: str | None) -> str | None:
+        return _validar_texto_nullable(value, "external_transparent_image_url", 500)
+
 
 class ProductoCreate(ProductoBase):
     stock_actual: int = Field(default=0, ge=0)
@@ -173,6 +185,8 @@ class ProductoUpdate(BaseModel):
     external_provider: str | None = None
     external_id: str | None = None
     external_last_sync: datetime | None = None
+    external_image_url: str | None = None
+    external_transparent_image_url: str | None = None
 
     @field_validator("sku")
     @classmethod
@@ -256,6 +270,16 @@ class ProductoUpdate(BaseModel):
     @classmethod
     def validar_external_id(cls, value: str | None) -> str | None:
         return _validar_texto_nullable(value, "external_id", 120)
+
+    @field_validator("external_image_url")
+    @classmethod
+    def validar_external_image_url(cls, value: str | None) -> str | None:
+        return _validar_texto_nullable(value, "external_image_url", 500)
+
+    @field_validator("external_transparent_image_url")
+    @classmethod
+    def validar_external_transparent_image_url(cls, value: str | None) -> str | None:
+        return _validar_texto_nullable(value, "external_transparent_image_url", 500)
 
 
 class ProductoResponse(ProductoBase):

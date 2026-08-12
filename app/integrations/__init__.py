@@ -4,7 +4,13 @@ from app.integrations.perfume_provider import (
     ExternalFragrance,
     ExternalNote,
     PerfumeProvider,
+    ProviderAuthenticationError,
+    ProviderBadRequestError,
+    ProviderInvalidResponseError,
     ProviderNotConfiguredError,
+    ProviderNotFoundError,
+    ProviderRateLimitError,
+    ProviderUnavailableError,
 )
 
 
@@ -14,5 +20,11 @@ __all__ = [
     "ExternalNote",
     "FragellaProvider",
     "PerfumeProvider",
+    "ProviderAuthenticationError",
+    "ProviderBadRequestError",
+    "ProviderInvalidResponseError",
     "ProviderNotConfiguredError",
+    "ProviderNotFoundError",
+    "ProviderRateLimitError",
+    "ProviderUnavailableError",
 ]

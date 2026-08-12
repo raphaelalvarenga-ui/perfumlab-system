@@ -202,6 +202,7 @@ CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 PERFUME_PROVIDER=fragella
 FRAGELLA_API_KEY=
 FRAGELLA_BASE_URL=https://api.fragella.com/api/v1
+FRAGELLA_TIMEOUT_SECONDS=10
 ```
 
 No se deben guardar contrasenas reales en el codigo. El archivo `.env` esta
@@ -257,6 +258,12 @@ La migracion de informacion olfativa crea:
 - `notas`
 - `producto_acordes`
 - `producto_notas`
+
+La migracion de metadatos externos agrega a `productos`:
+
+- `external_image_url`
+- `external_transparent_image_url`
+- unicidad compuesta para `external_provider` + `external_id`
 
 Para volver atras una migracion:
 
@@ -535,9 +542,100 @@ normalizados para fragancias, acordes y notas, y operaciones de busqueda,
 detalle y similares.
 
 `app/integrations/fragella_provider.py` contiene el stub `FragellaProvider`.
-Mientras `FRAGELLA_API_KEY` este vacio, sus metodos lanzan
-`ProviderNotConfiguredError`. No hace llamadas reales, no incluye credenciales
-reales y no consume Fragella todavia.
+Si `FRAGELLA_API_KEY` esta vacio, sus metodos lanzan
+`ProviderNotConfiguredError`. La API arranca igual y solo los endpoints del
+proveedor devuelven error controlado.
+
+### Integracion Fragella
+
+Fragella se consulta desde backend usando `httpx` y el header `x-api-key`. La
+API key debe guardarse solo en `.env`:
+
+```text
+PERFUME_PROVIDER=fragella
+FRAGELLA_API_KEY=...
+FRAGELLA_BASE_URL=https://api.fragella.com/api/v1
+FRAGELLA_TIMEOUT_SECONDS=10
+```
+
+Nunca se debe enviar la API key al frontend, Swagger, logs, respuestas JSON ni
+PostgreSQL. El timeout aplica a todas las llamadas externas. Hay como maximo
+dos reintentos adicionales solo para timeouts, errores de conexion y respuestas
+`500`, `502`, `503` o `504`. No se reintenta `400`, `401`, `403`, `404` ni
+`429`.
+
+Flujo recomendado:
+
+```text
+Producto local
+     |
+Buscar candidatos
+     |
+Administrador revisa
+     |
+Selecciona external_id
+     |
+Sincronizar
+     |
+PostgreSQL
+     |
+Acordes + Notas + Metadatos
+```
+
+Pasos de uso:
+
+1. Crear cuenta en Fragella.
+2. Obtener la API key.
+3. Guardarla en `.env` como `FRAGELLA_API_KEY`.
+4. No usar la key en frontend ni clientes publicos.
+5. Buscar candidatos desde el producto local.
+6. Revisar un candidato exacto.
+7. Elegir explicitamente el `external_id`.
+8. Sincronizar el producto.
+9. Consultar perfumes similares cuando haga falta.
+10. Revisar cuota con el endpoint de usage.
+
+Endpoints:
+
+```text
+GET  /api/v1/productos/{id}/proveedor/candidatos?limit=5
+GET  /api/v1/productos/{id}/proveedor/candidatos/{external_id}
+POST /api/v1/productos/{id}/sincronizar-proveedor
+GET  /api/v1/productos/{id}/similares?limit=5
+GET  /api/v1/integraciones/fragella/status
+GET  /api/v1/integraciones/fragella/usage
+```
+
+`candidatos`, `preview`, `sincronizar`, `status` y `usage` requieren
+`ADMINISTRADOR`. `similares` puede consultarlo cualquier usuario autenticado.
+
+La sincronizacion nunca modifica `sku`, `costo`, `precio`, `stock_actual`,
+`stock_minimo`, `categoria_id`, `activo`, `nombre` ni `marca`. Solo enriquece:
+
+```text
+genero
+anio_lanzamiento
+concentracion
+duracion
+estela
+external_provider
+external_id
+external_last_sync
+external_image_url
+external_transparent_image_url
+acordes
+notas
+```
+
+Si Fragella devuelve `None` para un metadato, se conserva el valor local
+existente. `ProductoORM.imagen` no se sobrescribe. Las imagenes externas se
+guardan separadas y no se descargan.
+
+El endpoint de candidatos no guarda nada y no autoelige `search[0]`; si nombre
++ marca no devuelve resultados, hace una sola busqueda adicional solo por
+nombre. El preview tampoco persiste. La sincronizacion hace upsert de acordes y
+notas por slug normalizado, reactiva registros inactivos, reemplaza el perfil
+olfativo completo y guarda todo en una sola transaccion.
 
 ### Endpoints de inventario
 
