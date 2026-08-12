@@ -47,7 +47,6 @@ class ProductoBase(BaseModel):
     categoria_id: int = Field(..., ge=1, examples=[1])
     costo: Decimal = Field(default=Decimal("0.00"), ge=0, examples=["150.00"])
     precio: Decimal = Field(default=Decimal("0.00"), ge=0, examples=["280.00"])
-    stock_actual: int = Field(default=0, ge=0)
     stock_minimo: int = Field(default=0, ge=0)
     ml: int | None = Field(default=None, gt=0, examples=[50])
     imagen: str | None = None
@@ -103,11 +102,6 @@ class ProductoBase(BaseModel):
     def validar_precio(cls, value: Decimal) -> Decimal:
         return _validar_decimal_no_negativo(value, "El precio")
 
-    @field_validator("stock_actual")
-    @classmethod
-    def validar_stock_actual(cls, value: int) -> int:
-        return _validar_entero_no_negativo(value, "El stock actual")
-
     @field_validator("stock_minimo")
     @classmethod
     def validar_stock_minimo(cls, value: int) -> int:
@@ -145,10 +139,21 @@ class ProductoBase(BaseModel):
 
 
 class ProductoCreate(ProductoBase):
-    pass
+    stock_actual: int = Field(default=0, ge=0)
+
+    @field_validator("stock_actual")
+    @classmethod
+    def validar_stock_actual(cls, value: int) -> int:
+        return _validar_entero_no_negativo(value, "El stock actual")
+
+
+class ProductoReplace(ProductoBase):
+    model_config = ConfigDict(extra="forbid")
 
 
 class ProductoUpdate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     sku: str | None = None
     nombre: str | None = None
     marca: str | None = None
@@ -156,7 +161,6 @@ class ProductoUpdate(BaseModel):
     categoria_id: int | None = Field(default=None, ge=1)
     costo: Decimal | None = Field(default=None, ge=0)
     precio: Decimal | None = Field(default=None, ge=0)
-    stock_actual: int | None = Field(default=None, ge=0)
     stock_minimo: int | None = Field(default=None, ge=0)
     ml: int | None = Field(default=None, gt=0)
     imagen: str | None = None
@@ -218,11 +222,6 @@ class ProductoUpdate(BaseModel):
     def validar_precio(cls, value: Decimal | None) -> Decimal | None:
         return _validar_decimal_no_negativo(value, "El precio")
 
-    @field_validator("stock_actual")
-    @classmethod
-    def validar_stock_actual(cls, value: int | None) -> int | None:
-        return _validar_entero_no_negativo(value, "El stock actual")
-
     @field_validator("stock_minimo")
     @classmethod
     def validar_stock_minimo(cls, value: int | None) -> int | None:
@@ -261,6 +260,7 @@ class ProductoUpdate(BaseModel):
 
 class ProductoResponse(ProductoBase):
     id: int
+    stock_actual: int
     created_at: datetime
     updated_at: datetime | None = None
 

@@ -15,7 +15,6 @@ NO_NULOS_PRODUCTO = {
     "categoria_id",
     "costo",
     "precio",
-    "stock_actual",
     "stock_minimo",
     "activo",
 }
@@ -77,6 +76,7 @@ class ProductosService:
 
     def actualizar_producto(self, producto_id: int, datos: dict):
         producto = self.obtener_producto(producto_id)
+        self._validar_stock_actual_no_editable(datos)
         self._validar_categoria_activa(datos.get("categoria_id"))
         self._asegurar_sku_disponible(datos["sku"], excluir_id=producto_id)
         try:
@@ -93,6 +93,7 @@ class ProductosService:
         if not datos:
             return producto
 
+        self._validar_stock_actual_no_editable(datos)
         self._validar_nulos_no_permitidos(datos)
 
         if "categoria_id" in datos:
@@ -143,4 +144,10 @@ class ProductosService:
         if campos_invalidos:
             raise BadRequestError(
                 "Estos campos no pueden ser nulos: " + ", ".join(campos_invalidos)
+            )
+
+    def _validar_stock_actual_no_editable(self, datos: dict) -> None:
+        if "stock_actual" in datos:
+            raise BadRequestError(
+                "El stock_actual solo puede modificarse mediante Inventario."
             )

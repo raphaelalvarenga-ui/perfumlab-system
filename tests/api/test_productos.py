@@ -23,6 +23,12 @@ def producto_payload(categoria_id, **overrides):
     return data
 
 
+def producto_update_payload(categoria_id, **overrides):
+    data = producto_payload(categoria_id, **overrides)
+    data.pop("stock_actual", None)
+    return data
+
+
 def test_crear_listar_obtener_actualizar_patch_y_soft_delete_producto(client):
     categoria = crear_categoria(client)
     response = client.post(
@@ -46,7 +52,7 @@ def test_crear_listar_obtener_actualizar_patch_y_soft_delete_producto(client):
 
     response = client.put(
         f"/api/v1/productos/{producto['id']}",
-        json=producto_payload(
+        json=producto_update_payload(
             categoria["id"],
             sku="PERF-002",
             nombre="Invictus Legend",
@@ -56,13 +62,28 @@ def test_crear_listar_obtener_actualizar_patch_y_soft_delete_producto(client):
     assert response.status_code == 200
     assert response.json()["sku"] == "PERF-002"
     assert response.json()["precio"] == "300.00"
+    assert response.json()["stock_actual"] == 20
 
     response = client.patch(
         f"/api/v1/productos/{producto['id']}",
-        json={"stock_actual": 2, "stock_minimo": 5},
+        json={"stock_minimo": 5},
     )
     assert response.status_code == 200
-    assert response.json()["stock_actual"] == 2
+    assert response.json()["stock_actual"] == 20
+
+    response = client.patch(
+        f"/api/v1/productos/{producto['id']}",
+        json={"stock_actual": 2},
+    )
+    assert response.status_code == 422
+
+    update_con_stock = producto_update_payload(categoria["id"])
+    update_con_stock["stock_actual"] = 2
+    response = client.put(
+        f"/api/v1/productos/{producto['id']}",
+        json=update_con_stock,
+    )
+    assert response.status_code == 422
 
     response = client.delete(f"/api/v1/productos/{producto['id']}")
     assert response.status_code == 200

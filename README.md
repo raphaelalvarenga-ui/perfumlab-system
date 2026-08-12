@@ -231,6 +231,11 @@ La migracion de clientes crea la tabla:
 
 - `clientes`
 
+La migracion de inventario crea:
+
+- el tipo PostgreSQL `tipo_movimiento_inventario`
+- `movimientos_inventario`
+
 Para volver atras una migracion:
 
 ```powershell
@@ -294,6 +299,9 @@ DELETE /api/v1/productos/{id}
 
 `DELETE` no borra fisicamente el producto; lo desactiva con `activo = false`.
 El precio y el costo se guardan como `Numeric/Decimal`, no como `float`.
+Durante la creacion de un producto se permite definir `stock_actual` inicial.
+Despues de creado, `stock_actual` no se modifica con `PUT` ni `PATCH`; cualquier
+cambio de existencia debe registrarse por Inventario para mantener historial.
 
 El listado de productos permite filtros:
 
@@ -313,6 +321,66 @@ GET /api/v1/productos?page=1&limit=20
 ```
 
 `limit` acepta como maximo 100 registros por pagina.
+
+### Endpoints de inventario
+
+```text
+POST /api/v1/inventario/entrada
+POST /api/v1/inventario/salida
+POST /api/v1/inventario/ajuste
+
+GET  /api/v1/inventario/movimientos
+GET  /api/v1/inventario/movimientos/{id}
+```
+
+Entrada suma unidades al `stock_actual` del producto:
+
+```json
+{
+  "producto_id": 1,
+  "cantidad": 10,
+  "motivo": "Compra de mercaderia"
+}
+```
+
+Salida resta unidades. Si la cantidad solicitada supera el stock disponible,
+la API responde `400 Bad Request` y no modifica el producto:
+
+```json
+{
+  "producto_id": 1,
+  "cantidad": 2,
+  "motivo": "Producto danado"
+}
+```
+
+Ajuste recibe el stock final deseado, no una diferencia. Si el stock actual ya
+es igual al valor solicitado, la operacion se rechaza para evitar movimientos
+sin cambio:
+
+```json
+{
+  "producto_id": 1,
+  "stock_nuevo": 15,
+  "motivo": "Conteo fisico"
+}
+```
+
+El historial se consulta con paginacion y filtros:
+
+```text
+GET /api/v1/inventario/movimientos?producto_id=1
+GET /api/v1/inventario/movimientos?tipo=ENTRADA
+GET /api/v1/inventario/movimientos?desde=2026-08-12T00:00:00Z
+GET /api/v1/inventario/movimientos?hasta=2026-08-12T23:59:59Z
+GET /api/v1/inventario/movimientos?page=1&limit=20
+```
+
+Los movimientos son historial de auditoria: no existen endpoints para editarlos
+o eliminarlos. Si hay un error de conteo, se corrige registrando un nuevo ajuste.
+Las operaciones de entrada, salida y ajuste bloquean la fila del producto con
+`SELECT ... FOR UPDATE` en PostgreSQL y actualizan producto + movimiento dentro
+de una sola transaccion.
 
 ### Endpoints de clientes
 

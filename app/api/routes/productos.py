@@ -6,6 +6,7 @@ from app.database.session import get_db
 from app.schemas.producto import (
     ProductoCreate,
     ProductoListResponse,
+    ProductoReplace,
     ProductoResponse,
     ProductoUpdate,
 )
@@ -63,7 +64,7 @@ def crear_producto(payload: ProductoCreate, db: Session = Depends(get_db)):
 @router.put("/{producto_id}", response_model=ProductoResponse)
 def actualizar_producto(
     producto_id: int,
-    payload: ProductoCreate,
+    payload: ProductoReplace,
     db: Session = Depends(get_db),
 ):
     try:
