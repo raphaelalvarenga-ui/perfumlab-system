@@ -222,8 +222,16 @@ Alembic toma `DATABASE_URL` desde la misma configuracion de la aplicacion:
 alembic upgrade head
 ```
 
-En esta fase todavia no hay tablas de negocio, por lo que no se incluye una
-migracion inicial con modelos.
+La migracion inicial de la API crea las tablas:
+
+- `categorias`
+- `productos`
+
+Para volver atras una migracion:
+
+```powershell
+alembic downgrade -1
+```
 
 ### Ejecutar FastAPI
 
@@ -254,6 +262,53 @@ GET http://127.0.0.1:8000/api/v1/health/db
 `/api/v1/health/db` ejecuta `SELECT 1` contra PostgreSQL. Si `DATABASE_URL` no
 esta configurado o PostgreSQL no esta disponible, responde con un error
 controlado sin exponer credenciales.
+
+### Endpoints de categorias
+
+```text
+GET    /api/v1/categorias
+GET    /api/v1/categorias/{id}
+POST   /api/v1/categorias
+PUT    /api/v1/categorias/{id}
+PATCH  /api/v1/categorias/{id}
+DELETE /api/v1/categorias/{id}
+```
+
+`DELETE` no borra fisicamente la categoria; la desactiva con `activo = false`.
+No se crean productos asociados a categorias inactivas.
+
+### Endpoints de productos
+
+```text
+GET    /api/v1/productos
+GET    /api/v1/productos/{id}
+POST   /api/v1/productos
+PUT    /api/v1/productos/{id}
+PATCH  /api/v1/productos/{id}
+DELETE /api/v1/productos/{id}
+```
+
+`DELETE` no borra fisicamente el producto; lo desactiva con `activo = false`.
+El precio y el costo se guardan como `Numeric/Decimal`, no como `float`.
+
+El listado de productos permite filtros:
+
+```text
+GET /api/v1/productos?buscar=invictus
+GET /api/v1/productos?marca=Rabanne
+GET /api/v1/productos?categoria_id=1
+GET /api/v1/productos?genero=Hombre
+GET /api/v1/productos?activo=true
+GET /api/v1/productos?stock_bajo=true
+```
+
+La paginacion usa:
+
+```text
+GET /api/v1/productos?page=1&limit=20
+```
+
+`limit` acepta como maximo 100 registros por pagina.
 
 ## Notas sobre carpetas generadas
 

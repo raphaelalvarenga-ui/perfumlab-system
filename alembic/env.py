@@ -12,6 +12,7 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from app.core.config import get_settings
 from app.database.base import Base
+import app.models.orm  # noqa: F401
 
 
 config = context.config
