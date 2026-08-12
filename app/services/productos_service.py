@@ -3,6 +3,7 @@ from math import ceil
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
+from app.models.tipos import TipoNota
 from app.repositories.categorias_repository import CategoriaRepository
 from app.repositories.productos_repository import ProductoRepository
 from app.services.exceptions import BadRequestError, ConflictError, NotFoundError
@@ -37,6 +38,9 @@ class ProductosService:
         genero: str | None = None,
         activo: bool | None = True,
         stock_bajo: bool | None = None,
+        acorde: str | None = None,
+        nota: str | None = None,
+        tipo_nota: TipoNota | None = None,
     ) -> dict:
         items, total = self.productos_repository.list(
             page=page,
@@ -47,6 +51,9 @@ class ProductosService:
             genero=genero,
             activo=activo,
             stock_bajo=stock_bajo,
+            acorde=acorde,
+            nota=nota,
+            tipo_nota=tipo_nota,
         )
         return {
             "items": items,

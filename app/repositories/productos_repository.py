@@ -1,7 +1,11 @@
 from sqlalchemy import Select, func, or_, select
 from sqlalchemy.orm import Session
 
+from app.core.slug import generar_slug
+from app.models.orm.acorde import AcordeORM, ProductoAcordeORM
+from app.models.orm.nota import NotaORM, ProductoNotaORM
 from app.models.orm.producto import ProductoORM
+from app.models.tipos import TipoNota
 
 
 class ProductoRepository:
@@ -34,6 +38,9 @@ class ProductoRepository:
         genero: str | None = None,
         activo: bool | None = True,
         stock_bajo: bool | None = None,
+        acorde: str | None = None,
+        nota: str | None = None,
+        tipo_nota: TipoNota | None = None,
     ) -> tuple[list[ProductoORM], int]:
         statement = self._aplicar_filtros(
             select(ProductoORM),
@@ -43,6 +50,9 @@ class ProductoRepository:
             genero=genero,
             activo=activo,
             stock_bajo=stock_bajo,
+            acorde=acorde,
+            nota=nota,
+            tipo_nota=tipo_nota,
         )
         count_statement = self._aplicar_filtros(
             select(func.count(ProductoORM.id)),
@@ -52,6 +62,9 @@ class ProductoRepository:
             genero=genero,
             activo=activo,
             stock_bajo=stock_bajo,
+            acorde=acorde,
+            nota=nota,
+            tipo_nota=tipo_nota,
         )
 
         offset = (page - 1) * limit
@@ -91,6 +104,9 @@ class ProductoRepository:
         genero: str | None,
         activo: bool | None,
         stock_bajo: bool | None,
+        acorde: str | None,
+        nota: str | None,
+        tipo_nota: TipoNota | None,
     ) -> Select:
         if buscar:
             patron = f"%{buscar.strip()}%"
@@ -117,4 +133,46 @@ class ProductoRepository:
             statement = statement.where(
                 ProductoORM.stock_actual > ProductoORM.stock_minimo
             )
+        if acorde and acorde.strip():
+            statement = statement.where(self._exists_acorde_producto(acorde.strip()))
+        if nota and nota.strip():
+            statement = statement.where(
+                self._exists_nota_producto(nota.strip(), tipo_nota=tipo_nota)
+            )
         return statement
+
+    def _exists_acorde_producto(self, value: str):
+        slug = generar_slug(value)
+        patron = f"%{value}%"
+        subquery = (
+            select(ProductoAcordeORM.producto_id)
+            .join(AcordeORM, ProductoAcordeORM.acorde_id == AcordeORM.id)
+            .where(
+                ProductoAcordeORM.producto_id == ProductoORM.id,
+                AcordeORM.activo.is_(True),
+                or_(
+                    func.lower(AcordeORM.slug) == slug,
+                    AcordeORM.nombre.ilike(patron),
+                ),
+            )
+        )
+        return subquery.exists()
+
+    def _exists_nota_producto(self, value: str, *, tipo_nota: TipoNota | None):
+        slug = generar_slug(value)
+        patron = f"%{value}%"
+        subquery = (
+            select(ProductoNotaORM.producto_id)
+            .join(NotaORM, ProductoNotaORM.nota_id == NotaORM.id)
+            .where(
+                ProductoNotaORM.producto_id == ProductoORM.id,
+                NotaORM.activo.is_(True),
+                or_(
+                    func.lower(NotaORM.slug) == slug,
+                    NotaORM.nombre.ilike(patron),
+                ),
+            )
+        )
+        if tipo_nota is not None:
+            subquery = subquery.where(ProductoNotaORM.tipo == tipo_nota)
+        return subquery.exists()

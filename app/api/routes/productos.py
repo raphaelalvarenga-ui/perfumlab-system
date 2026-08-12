@@ -5,7 +5,8 @@ from app.api.dependencies.auth import get_current_user, require_roles
 from app.api.routes._errors import service_error_to_http
 from app.database.session import get_db
 from app.models.orm.usuario import UsuarioORM
-from app.models.tipos import RolUsuario
+from app.models.tipos import RolUsuario, TipoNota
+from app.schemas.perfumeria import PerfilOlfativoResponse, PerfilOlfativoUpdate
 from app.schemas.producto import (
     ProductoCreate,
     ProductoListResponse,
@@ -14,6 +15,7 @@ from app.schemas.producto import (
     ProductoUpdate,
 )
 from app.services.exceptions import ServiceError
+from app.services.perfumeria_service import PerfumeriaService
 from app.services.productos_service import ProductosService
 
 
@@ -29,6 +31,9 @@ def listar_productos(
     genero: str | None = None,
     activo: bool | None = True,
     stock_bajo: bool | None = None,
+    acorde: str | None = None,
+    nota: str | None = None,
+    tipo_nota: TipoNota | None = None,
     page: int = Query(default=1, ge=1),
     limit: int = Query(default=20, ge=1, le=100),
     db: Session = Depends(get_db),
@@ -41,9 +46,40 @@ def listar_productos(
         genero=genero,
         activo=activo,
         stock_bajo=stock_bajo,
+        acorde=acorde,
+        nota=nota,
+        tipo_nota=tipo_nota,
         page=page,
         limit=limit,
     )
+
+
+@router.get("/{producto_id}/perfil-olfativo", response_model=PerfilOlfativoResponse)
+def obtener_perfil_olfativo(
+    producto_id: int,
+    db: Session = Depends(get_db),
+    _current_user: UsuarioORM = Depends(get_current_user),
+):
+    try:
+        return PerfumeriaService(db).obtener_perfil(producto_id)
+    except ServiceError as error:
+        raise service_error_to_http(error) from error
+
+
+@router.put("/{producto_id}/perfil-olfativo", response_model=PerfilOlfativoResponse)
+def reemplazar_perfil_olfativo(
+    producto_id: int,
+    payload: PerfilOlfativoUpdate,
+    db: Session = Depends(get_db),
+    _admin: UsuarioORM = Depends(admin_required),
+):
+    try:
+        return PerfumeriaService(db).reemplazar_perfil(
+            producto_id,
+            payload.model_dump(),
+        )
+    except ServiceError as error:
+        raise service_error_to_http(error) from error
 
 
 @router.get("/{producto_id}", response_model=ProductoResponse)

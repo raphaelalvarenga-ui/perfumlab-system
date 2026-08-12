@@ -11,6 +11,9 @@ class Settings(BaseSettings):
     jwt_algorithm: str = "HS256"
     access_token_expire_minutes: int = 60
     cors_origins: str = "http://localhost:3000,http://localhost:5173"
+    perfume_provider: str = "fragella"
+    fragella_api_key: str | None = None
+    fragella_base_url: str = "https://api.fragella.com/api/v1"
 
     model_config = SettingsConfigDict(
         env_file=".env",

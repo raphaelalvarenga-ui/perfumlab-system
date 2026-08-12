@@ -20,3 +20,16 @@ class EstadoFactura(str, Enum):
 class RolUsuario(str, Enum):
     ADMINISTRADOR = "ADMINISTRADOR"
     VENDEDOR = "VENDEDOR"
+
+
+class TipoNota(str, Enum):
+    SALIDA = "SALIDA"
+    CORAZON = "CORAZON"
+    FONDO = "FONDO"
+
+
+class IntensidadAcorde(str, Enum):
+    DOMINANTE = "DOMINANTE"
+    PROMINENTE = "PROMINENTE"
+    MODERADO = "MODERADO"
+    SUTIL = "SUTIL"

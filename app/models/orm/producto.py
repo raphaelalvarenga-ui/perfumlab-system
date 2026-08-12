@@ -82,6 +82,18 @@ class ProductoORM(Base):
     detalles_venta: Mapped[list["DetalleVentaORM"]] = relationship(
         back_populates="producto"
     )
+    acordes_rel: Mapped[list["ProductoAcordeORM"]] = relationship(
+        back_populates="producto",
+        order_by="ProductoAcordeORM.posicion.asc(), ProductoAcordeORM.acorde_id.asc()",
+    )
+    notas_rel: Mapped[list["ProductoNotaORM"]] = relationship(
+        back_populates="producto",
+        order_by=(
+            "ProductoNotaORM.tipo.asc(), "
+            "ProductoNotaORM.posicion.asc(), "
+            "ProductoNotaORM.nota_id.asc()"
+        ),
+    )
 
     __table_args__ = (
         CheckConstraint("costo >= 0", name="ck_productos_costo_no_negativo"),

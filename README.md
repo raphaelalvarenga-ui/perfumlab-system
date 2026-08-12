@@ -199,6 +199,9 @@ SECRET_KEY=change_this_secret_key
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
 CORS_ORIGINS=http://localhost:3000,http://localhost:5173
+PERFUME_PROVIDER=fragella
+FRAGELLA_API_KEY=
+FRAGELLA_BASE_URL=https://api.fragella.com/api/v1
 ```
 
 No se deben guardar contrasenas reales en el codigo. El archivo `.env` esta
@@ -245,6 +248,15 @@ Las migraciones de ventas, facturas y autenticacion crean:
 - el tipo PostgreSQL `rol_usuario`
 - `usuarios`
 - columnas y llaves foraneas nullable de auditoria hacia `usuarios`
+
+La migracion de informacion olfativa crea:
+
+- el tipo PostgreSQL `tipo_nota`
+- el tipo PostgreSQL `intensidad_acorde`
+- `acordes`
+- `notas`
+- `producto_acordes`
+- `producto_notas`
 
 Para volver atras una migracion:
 
@@ -367,7 +379,8 @@ GET /api/v1/health/db
 POST /api/v1/auth/login
 
 Cualquier usuario autenticado:
-GET categorias, productos, clientes, inventario/movimientos, ventas, facturas
+GET categorias, productos, perfil olfativo, acordes, notas, clientes,
+inventario/movimientos, ventas, facturas
 GET /api/v1/auth/me
 POST /api/v1/auth/change-password
 
@@ -377,7 +390,7 @@ POST ventas
 POST ventas/{venta_id}/factura
 
 Solo ADMINISTRADOR:
-mutaciones de categorias y productos
+mutaciones de categorias, productos, perfil olfativo, acordes y notas
 DELETE clientes
 movimientos manuales de inventario
 anular ventas
@@ -436,6 +449,9 @@ GET /api/v1/productos?categoria_id=1
 GET /api/v1/productos?genero=Hombre
 GET /api/v1/productos?activo=true
 GET /api/v1/productos?stock_bajo=true
+GET /api/v1/productos?acorde=citrico
+GET /api/v1/productos?nota=toronja
+GET /api/v1/productos?nota=laurel&tipo_nota=CORAZON
 ```
 
 La paginacion usa:
@@ -445,6 +461,83 @@ GET /api/v1/productos?page=1&limit=20
 ```
 
 `limit` acepta como maximo 100 registros por pagina.
+
+### Informacion olfativa
+
+La informacion olfativa vive en PostgreSQL y no cambia la aplicacion Tkinter.
+La aplicacion de escritorio sigue leyendo y escribiendo JSON.
+
+Los acordes y notas son catalogos normalizados con `nombre`, `slug`, `activo`,
+`created_at` y `updated_at`. El `slug` se genera sin acentos y en minusculas:
+`Citrico` y su variante con acento terminan como `citrico`. Los duplicados se
+protegen con indices case-insensitive en PostgreSQL.
+
+Endpoints de acordes:
+
+```text
+GET    /api/v1/acordes?buscar=citrico&activo=true&page=1&limit=20
+GET    /api/v1/acordes/{id}
+POST   /api/v1/acordes
+PATCH  /api/v1/acordes/{id}
+DELETE /api/v1/acordes/{id}
+```
+
+Endpoints de notas:
+
+```text
+GET    /api/v1/notas?buscar=toronja&activo=true&page=1&limit=20
+GET    /api/v1/notas/{id}
+POST   /api/v1/notas
+PATCH  /api/v1/notas/{id}
+DELETE /api/v1/notas/{id}
+```
+
+`DELETE` en acordes y notas hace soft delete con `activo = false`. Las lecturas
+pueden hacerlas usuarios autenticados; las mutaciones requieren
+`ADMINISTRADOR`.
+
+El perfil olfativo de un producto se maneja separado de la respuesta normal de
+productos:
+
+```text
+GET /api/v1/productos/{id}/perfil-olfativo
+PUT /api/v1/productos/{id}/perfil-olfativo
+```
+
+`GET` devuelve `producto_id`, una lista de `acordes` y las `notas` agrupadas en
+claves `salida`, `corazon` y `fondo`. `PUT` reemplaza el perfil completo en una
+sola transaccion. No permite productos inexistentes, productos inactivos para
+modificacion, acordes/notas inexistentes o inactivos, acordes repetidos ni la
+misma nota repetida dentro del mismo tipo. Las posiciones deben ser cero o
+positivas.
+
+Los campos especializados de perfumeria que ya existen en `productos` se
+reutilizan:
+
+```text
+genero
+anio_lanzamiento
+concentracion
+duracion
+estela
+external_provider
+external_id
+external_last_sync
+```
+
+`duracion` representa longevity y `estela` representa sillage.
+
+### Proveedor externo
+
+La API queda preparada para un proveedor externo de informacion de perfumes con
+una abstraccion en `app/integrations/perfume_provider.py`. Incluye DTOs
+normalizados para fragancias, acordes y notas, y operaciones de busqueda,
+detalle y similares.
+
+`app/integrations/fragella_provider.py` contiene el stub `FragellaProvider`.
+Mientras `FRAGELLA_API_KEY` este vacio, sus metodos lanzan
+`ProviderNotConfiguredError`. No hace llamadas reales, no incluye credenciales
+reales y no consume Fragella todavia.
 
 ### Endpoints de inventario
 
