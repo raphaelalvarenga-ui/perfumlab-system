@@ -2,7 +2,7 @@ from pathlib import Path
 import unicodedata
 
 from app.controllers.productos_controller import ProductosController
-from app.database.json_storage import DATABASE_PATH, cargar_tabla, es_activo
+from app.database.json_storage import cargar_tabla, es_activo
 from app.models.producto import Producto
 from app.validaciones import limpiar_texto, validar_ruta_exportacion
 
@@ -41,7 +41,7 @@ REQUERIDOS_IMPORTACION = (
 )
 
 
-def exportar_productos_excel(ruta_archivo, ruta_db=DATABASE_PATH):
+def exportar_productos_excel(ruta_archivo, ruta_db=None):
     openpyxl = _cargar_openpyxl()
     ruta_archivo = validar_ruta_exportacion(
         ruta_archivo,
@@ -62,7 +62,7 @@ def exportar_productos_excel(ruta_archivo, ruta_db=DATABASE_PATH):
     return ruta_archivo
 
 
-def importar_productos_excel(ruta_archivo, ruta_db=DATABASE_PATH):
+def importar_productos_excel(ruta_archivo, ruta_db=None):
     openpyxl = _cargar_openpyxl()
     ruta_archivo = _validar_ruta_importacion(ruta_archivo)
     workbook = openpyxl.load_workbook(ruta_archivo, read_only=True, data_only=True)
@@ -116,11 +116,11 @@ def importar_productos_excel(ruta_archivo, ruta_db=DATABASE_PATH):
     return len(ids_creados)
 
 
-def obtener_filas_productos(ruta_db=DATABASE_PATH):
+def obtener_filas_productos(ruta_db=None):
     controlador = ProductosController(ruta_db)
     categorias = {
-        int(categoria["id"]): categoria["nombre"]
-        for categoria in cargar_tabla("categorias", ruta_db)
+        int(categoria.id): categoria.nombre
+        for categoria in controlador.listar_categorias(incluir_inactivas=True)
     }
     filas = []
 
@@ -212,6 +212,13 @@ def _extraer_datos_fila(valores, mapa_columnas):
 
 
 def _obtener_skus_existentes(ruta_db):
+    if ruta_db is None:
+        return {
+            producto.sku.strip().lower()
+            for producto in ProductosController().listar_productos(incluir_inactivos=True)
+            if producto.sku.strip()
+        }
+
     return {
         str(producto.get("sku") or "").strip().lower()
         for producto in cargar_tabla("productos", ruta_db)
@@ -220,6 +227,13 @@ def _obtener_skus_existentes(ruta_db):
 
 
 def _obtener_categorias_por_nombre(ruta_db):
+    if ruta_db is None:
+        return {
+            categoria.nombre.strip().lower(): int(categoria.id)
+            for categoria in ProductosController().listar_categorias()
+            if categoria.activo
+        }
+
     return {
         str(categoria.get("nombre") or "").strip().lower(): int(categoria["id"])
         for categoria in cargar_tabla("categorias", ruta_db)

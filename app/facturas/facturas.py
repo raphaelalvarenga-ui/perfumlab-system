@@ -1,8 +1,9 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
+from app.api_client import get_api_client
+from app.api_client.exceptions import ApiNotFoundError, ApiValidationError
 from app.database.json_storage import (
-    DATABASE_PATH,
     buscar_por_id,
     cargar_todo,
     fecha_actual,
@@ -14,11 +15,21 @@ from app.ui_theme import aplicar_tema, configurar_tabla, crear_encabezado
 from app.validaciones import validar_id_positivo, validar_ruta_exportacion
 
 
-def crear_tabla_facturas(ruta_db=DATABASE_PATH):
+def crear_tabla_facturas(ruta_db=None):
+    if ruta_db is None:
+        return None
     inicializar_datos_json(ruta_db)
 
 
-def generar_factura(venta_id, ruta_db=DATABASE_PATH):
+def generar_factura(venta_id, ruta_db=None):
+    if ruta_db is None:
+        try:
+            venta_id = validar_id_positivo(venta_id, "venta")
+            factura = get_api_client().facturas.emitir(venta_id)
+        except Exception as error:
+            return False, str(error)
+        return True, f"Factura {factura['numero']} generada correctamente."
+
     inicializar_datos_json(ruta_db)
 
     try:
@@ -55,40 +66,65 @@ def generar_factura(venta_id, ruta_db=DATABASE_PATH):
     return True, f"Factura {numero_factura} generada correctamente."
 
 
-def obtener_facturas(ruta_db=DATABASE_PATH):
+def obtener_facturas(ruta_db=None):
+    if ruta_db is None:
+        facturas = [
+            _armar_factura_api(factura)
+            for factura in get_api_client().facturas.listar_todas()
+        ]
+        facturas.sort(key=lambda factura: int(factura["id"]), reverse=True)
+        return facturas
+
     datos = cargar_todo(ruta_db)
     facturas = [_armar_factura(factura, datos) for factura in datos["facturas"]]
     facturas.sort(key=lambda factura: int(factura["id"]), reverse=True)
     return facturas
 
 
-def obtener_factura_por_id(factura_id, ruta_db=DATABASE_PATH):
+def obtener_factura_por_id(factura_id, ruta_db=None):
     try:
         factura_id = validar_id_positivo(factura_id, "factura")
     except ValueError:
         return None
+
+    if ruta_db is None:
+        try:
+            return _armar_factura_api(get_api_client().facturas.obtener(factura_id))
+        except (ApiNotFoundError, ApiValidationError):
+            return None
 
     datos = cargar_todo(ruta_db)
     factura = buscar_por_id(datos["facturas"], factura_id)
     return _armar_factura(factura, datos) if factura else None
 
 
-def obtener_factura_por_venta_id(venta_id, ruta_db=DATABASE_PATH):
+def obtener_factura_por_venta_id(venta_id, ruta_db=None):
     try:
         venta_id = validar_id_positivo(venta_id, "venta")
     except ValueError:
         return None
+
+    if ruta_db is None:
+        facturas = get_api_client().facturas.listar_todas(venta_id=venta_id)
+        return _armar_factura_api(facturas[0]) if facturas else None
 
     datos = cargar_todo(ruta_db)
     factura = _factura_por_venta(datos["facturas"], venta_id)
     return _armar_factura(factura, datos) if factura else None
 
 
-def obtener_detalle_factura(factura_id, ruta_db=DATABASE_PATH):
+def obtener_detalle_factura(factura_id, ruta_db=None):
     try:
         factura_id = validar_id_positivo(factura_id, "factura")
     except ValueError:
         return []
+
+    if ruta_db is None:
+        try:
+            factura = get_api_client().facturas.obtener(factura_id)
+        except (ApiNotFoundError, ApiValidationError):
+            return []
+        return [_armar_detalle_factura_api(detalle) for detalle in factura.get("detalles", [])]
 
     datos = cargar_todo(ruta_db)
     factura = buscar_por_id(datos["facturas"], factura_id)
@@ -113,7 +149,26 @@ def obtener_detalle_factura(factura_id, ruta_db=DATABASE_PATH):
     ]
 
 
-def obtener_ventas_para_facturar(ruta_db=DATABASE_PATH):
+def obtener_ventas_para_facturar(ruta_db=None):
+    if ruta_db is None:
+        api = get_api_client()
+        ventas_con_factura = {
+            int(factura["venta_id"])
+            for factura in api.facturas.listar_todas()
+        }
+        ventas = [
+            {
+                "id": venta["id"],
+                "cliente": venta.get("cliente_nombre"),
+                "total": float(venta["total"]),
+                "fecha": venta.get("created_at"),
+            }
+            for venta in api.ventas.listar_todas(estado="COMPLETADA")
+            if int(venta["id"]) not in ventas_con_factura
+        ]
+        ventas.sort(key=lambda venta: int(venta["id"]), reverse=True)
+        return ventas
+
     datos = cargar_todo(ruta_db)
     ventas_con_factura = {
         int(factura["venta_id"])
@@ -132,6 +187,27 @@ def obtener_ventas_para_facturar(ruta_db=DATABASE_PATH):
     ]
     ventas.sort(key=lambda venta: int(venta["id"]), reverse=True)
     return ventas
+
+
+def _armar_factura_api(factura):
+    return {
+        "id": factura["id"],
+        "numero_factura": factura["numero"],
+        "venta_id": factura["venta_id"],
+        "cliente": factura.get("cliente_nombre"),
+        "total": float(factura["total"]),
+        "fecha": factura.get("created_at"),
+        "estado": factura.get("estado"),
+    }
+
+
+def _armar_detalle_factura_api(detalle):
+    return {
+        "producto": detalle["producto_nombre"],
+        "cantidad": int(detalle["cantidad"]),
+        "precio_unitario": float(detalle["precio_unitario"]),
+        "subtotal": float(detalle["subtotal"]),
+    }
 
 
 def _armar_factura(factura, datos):
@@ -176,7 +252,7 @@ def _nombre_producto(productos, producto_id):
     return producto["nombre"] if producto else f"Producto ID {producto_id}"
 
 
-def generar_texto_factura(factura_id, ruta_db=DATABASE_PATH):
+def generar_texto_factura(factura_id, ruta_db=None):
     factura_id = validar_id_positivo(factura_id, "factura")
     factura = obtener_factura_por_id(factura_id, ruta_db)
     if factura is None:
@@ -217,7 +293,7 @@ def generar_texto_factura(factura_id, ruta_db=DATABASE_PATH):
     return "\n".join(lineas)
 
 
-def exportar_factura_txt(factura_id, ruta_archivo, ruta_db=DATABASE_PATH):
+def exportar_factura_txt(factura_id, ruta_archivo, ruta_db=None):
     ruta_archivo = validar_ruta_exportacion(
         ruta_archivo,
         ".txt",
@@ -229,7 +305,7 @@ def exportar_factura_txt(factura_id, ruta_archivo, ruta_db=DATABASE_PATH):
         archivo.write(texto)
 
 
-def exportar_factura_pdf(factura_id, ruta_archivo, ruta_db=DATABASE_PATH):
+def exportar_factura_pdf(factura_id, ruta_archivo, ruta_db=None):
     ruta_archivo = validar_ruta_exportacion(
         ruta_archivo,
         ".pdf",
@@ -464,12 +540,13 @@ def abrir_facturas(ventana=None):
     ).grid(row=0, column=0, sticky=tk.W)
     venta_combo = ttk.Combobox(formulario, textvariable=venta_var, state="readonly")
     venta_combo.grid(row=0, column=1, sticky="ew", padx=(8, 8))
-    ttk.Button(
+    generar_btn = ttk.Button(
         formulario,
         text="Generar factura PDF",
         command=lambda: guardar_factura(),
         style="Primary.TButton",
-    ).grid(row=0, column=2, sticky=tk.E)
+    )
+    generar_btn.grid(row=0, column=2, sticky=tk.E)
 
     botones = ttk.Frame(frame)
     botones.grid(row=2, column=0, sticky="ew", pady=(0, 8))
@@ -559,7 +636,13 @@ def abrir_facturas(ventana=None):
         ventas_cache.clear()
         opciones = []
 
-        for venta in obtener_ventas_para_facturar():
+        try:
+            ventas = obtener_ventas_para_facturar()
+        except Exception as error:
+            messagebox.showerror("Facturas", str(error))
+            return
+
+        for venta in ventas:
             cliente = venta["cliente"] or "Sin cliente"
             etiqueta = f"{venta['id']} - {cliente} - L {venta['total']:.2f}"
             ventas_cache[etiqueta] = venta["id"]
@@ -572,7 +655,13 @@ def abrir_facturas(ventana=None):
         for item in tabla_facturas.get_children():
             tabla_facturas.delete(item)
 
-        for indice, factura in enumerate(obtener_facturas()):
+        try:
+            facturas = obtener_facturas()
+        except Exception as error:
+            messagebox.showerror("Facturas", str(error))
+            return
+
+        for indice, factura in enumerate(facturas):
             tabla_facturas.insert(
                 "",
                 tk.END,
@@ -592,7 +681,13 @@ def abrir_facturas(ventana=None):
         for item in tabla_detalle.get_children():
             tabla_detalle.delete(item)
 
-        factura = obtener_factura_por_id(factura_id)
+        try:
+            factura = obtener_factura_por_id(factura_id)
+            detalles = obtener_detalle_factura(factura_id)
+        except Exception as error:
+            messagebox.showerror("Facturas", str(error))
+            return
+
         if factura is None:
             resumen_var.set("Seleccione una factura para ver su detalle.")
             return
@@ -603,7 +698,7 @@ def abrir_facturas(ventana=None):
             f"Cliente: {cliente} | Total: L {factura['total']:.2f}"
         )
 
-        for indice, detalle in enumerate(obtener_detalle_factura(factura_id)):
+        for indice, detalle in enumerate(detalles):
             tabla_detalle.insert(
                 "",
                 tk.END,
@@ -629,12 +724,20 @@ def abrir_facturas(ventana=None):
             messagebox.showwarning("Facturas", "Seleccione una venta pendiente.")
             return
 
-        ok, mensaje = generar_factura(venta_id)
+        generar_btn.state(["disabled"])
+        try:
+            ok, mensaje = generar_factura(venta_id)
+        finally:
+            generar_btn.state(["!disabled"])
 
         if ok:
-            factura = obtener_factura_por_venta_id(venta_id)
-            cargar_ventas_pendientes()
-            cargar_facturas()
+            try:
+                factura = obtener_factura_por_venta_id(venta_id)
+                cargar_ventas_pendientes()
+                cargar_facturas()
+            except Exception as error:
+                messagebox.showerror("Facturas", str(error))
+                return
             if factura is not None:
                 tabla_facturas.selection_set(str(factura["id"]))
                 tabla_facturas.focus(str(factura["id"]))
@@ -654,7 +757,12 @@ def abrir_facturas(ventana=None):
         return int(seleccion[0])
 
     def exportar_factura_pdf_con_dialogo(factura_id, mensaje_exito=None):
-        factura = obtener_factura_por_id(factura_id)
+        try:
+            factura = obtener_factura_por_id(factura_id)
+        except Exception as error:
+            messagebox.showerror("Facturas", str(error))
+            return
+
         if factura is None:
             messagebox.showerror("Facturas", "La factura seleccionada no existe.")
             return

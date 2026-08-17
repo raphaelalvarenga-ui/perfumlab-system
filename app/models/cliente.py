@@ -31,7 +31,7 @@ class Cliente:
 
     def validar(self):
         self.nombre = validar_nombre_cliente(self.nombre)
-        self.correo = validar_correo(self.correo)
+        self.correo = validar_correo(self.correo) if self.correo.strip() else ""
         self.telefono = validar_telefono(self.telefono)
         self.direccion = validar_texto_opcional(
             self.direccion,

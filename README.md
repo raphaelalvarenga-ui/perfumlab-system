@@ -58,26 +58,33 @@ El archivo `requirements.txt` instala las dependencias necesarias, incluyendo:
 
 ## Ejecutar el programa desde el codigo
 
-Antes de crear el `.exe`, es recomendable probar que el programa abre bien:
+La aplicacion de escritorio ahora usa la API REST. El orden de desarrollo es:
 
 ```powershell
-python crear_db.py
-python app\main.py
+# Terminal 1
+uv run uvicorn app.main_api:app --reload
+
+# Terminal 2
+uv run python -m app.main
 ```
 
-El comando `crear_db.py` crea o verifica los archivos JSON de datos en
-`database/json`.
+Antes de abrir Tkinter, PostgreSQL debe estar iniciado y FastAPI debe responder
+correctamente en `PERFUMLAB_API_URL`, por defecto `http://127.0.0.1:8000`.
 
-El comando `python app\main.py` abre la aplicacion en modo desarrollo.
+Al iniciar, Tkinter ejecuta `GET /api/v1/health` y `GET /api/v1/health/db`.
+Si la API o PostgreSQL no estan disponibles, muestra un mensaje claro y no abre
+los modulos empresariales.
 
 ## Generar el ejecutable .exe
 
 Para crear el ejecutable:
 
 ```powershell
-python crear_db.py
 python -m PyInstaller --noconfirm --clean .\PerfumLab.spec
 ```
+
+El ejecutable de escritorio no inicia FastAPI por si solo. Para usarlo, la API
+REST y PostgreSQL deben estar disponibles en la URL configurada.
 
 Cuando termine, el ejecutable queda en:
 
@@ -151,7 +158,7 @@ cd C:\Users\TU_USUARIO\OneDrive\Escritorio\perfumlab-system
 git switch main
 git pull origin main
 python -m pip install -r requirements.txt
-python crear_db.py
+uv run alembic upgrade head
 ```
 
 Despues de actualizar el codigo, si se quiere un `.exe` actualizado, hay que
@@ -167,17 +174,24 @@ El `.exe` anterior no se actualiza solo.
 
 - `app\main.py`: abre la aplicacion.
 - `app\main_api.py`: abre la API REST con FastAPI.
-- `crear_db.py`: crea o verifica los datos iniciales.
-- `database\json`: contiene los datos del sistema.
+- `crear_db.py`: utilidad legacy para archivos JSON historicos.
+- `database\json`: respaldo legacy; ya no es la fuente activa del sistema.
 - `PerfumLab.spec`: configuracion para crear el `.exe`.
 - `requirements.txt`: dependencias del proyecto.
 - `docs`: documentos y reportes del proyecto.
 
 ## API REST
 
-La API REST es una capa nueva que convive con la aplicacion Tkinter. La
-aplicacion de escritorio sigue usando JSON; FastAPI usa PostgreSQL, SQLAlchemy,
-Alembic y autenticacion JWT.
+La arquitectura activa es:
+
+```text
+Tkinter -> REST API -> FastAPI -> PostgreSQL
+```
+
+PostgreSQL es la unica fuente activa de datos empresariales. Los archivos JSON
+se conservan como legado, respaldo y referencia historica; Tkinter no debe
+leerlos ni escribirlos durante los flujos activos de categorias, productos,
+clientes, inventario, ventas, facturas o reportes.
 
 ### Instalar dependencias
 
@@ -203,6 +217,8 @@ PERFUME_PROVIDER=fragella
 FRAGELLA_API_KEY=
 FRAGELLA_BASE_URL=https://api.fragella.com/api/v1
 FRAGELLA_TIMEOUT_SECONDS=10
+PERFUMLAB_API_URL=http://127.0.0.1:8000
+PERFUMLAB_API_TIMEOUT_SECONDS=10
 ```
 
 No se deben guardar contrasenas reales en el codigo. El archivo `.env` esta
@@ -274,7 +290,7 @@ alembic downgrade -1
 ### Ejecutar FastAPI
 
 ```powershell
-uvicorn app.main_api:app --reload
+uv run uvicorn app.main_api:app --reload
 ```
 
 Swagger queda disponible en:
@@ -300,6 +316,20 @@ GET http://127.0.0.1:8000/api/v1/health/db
 `/api/v1/health/db` ejecuta `SELECT 1` contra PostgreSQL. Si `DATABASE_URL` no
 esta configurado o PostgreSQL no esta disponible, responde con un error
 controlado sin exponer credenciales.
+
+### Ejecutar Tkinter
+
+Con FastAPI encendido:
+
+```powershell
+uv run python -m app.main
+```
+
+Tkinter muestra login, guarda el JWT solamente en memoria y agrega
+`Authorization: Bearer <token>` desde el cliente REST centralizado. Al cerrar
+sesion o cerrar la ventana se limpia la sesion y se cierra el cliente HTTP.
+
+No se arranca Uvicorn automaticamente desde Tkinter en esta fase.
 
 ### Autenticacion y usuarios
 
@@ -471,8 +501,9 @@ GET /api/v1/productos?page=1&limit=20
 
 ### Informacion olfativa
 
-La informacion olfativa vive en PostgreSQL y no cambia la aplicacion Tkinter.
-La aplicacion de escritorio sigue leyendo y escribiendo JSON.
+La informacion olfativa vive en PostgreSQL. La aplicacion Tkinter todavia no
+incluye pantallas nuevas para acordes, notas o Fragella; esas capacidades siguen
+disponibles por FastAPI/Swagger.
 
 Los acordes y notas son catalogos normalizados con `nombre`, `slug`, `activo`,
 `created_at` y `updated_at`. El `slug` se genera sin acentos y en minusculas:
@@ -961,8 +992,9 @@ con mayor deficit.
 ## Migracion de datos legado JSON
 
 La migracion JSON -> PostgreSQL es una herramienta puntual para pasar datos
-historicos de la aplicacion Tkinter a la API. No cambia la aplicacion de
-escritorio: Tkinter sigue usando JSON y FastAPI sigue usando PostgreSQL.
+historicos a la base activa. Despues de la migracion, la aplicacion de
+escritorio usa REST API y PostgreSQL; JSON queda como legado/backup, no como
+fuente activa ni como fallback automatico.
 
 La ruta legacy por defecto es:
 

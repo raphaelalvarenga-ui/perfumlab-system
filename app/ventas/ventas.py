@@ -1,8 +1,10 @@
 import tkinter as tk
-from tkinter import messagebox, ttk
+from tkinter import messagebox, simpledialog, ttk
 
+from app.api_client import get_api_client
+from app.api_client.exceptions import ApiNotFoundError, ApiValidationError
+from app.api_client.session import get_user_session
 from app.database.json_storage import (
-    DATABASE_PATH,
     buscar_por_id,
     cargar_tabla,
     cargar_todo,
@@ -20,11 +22,27 @@ from app.validaciones import (
 )
 
 
-def crear_tabla_ventas(ruta_db=DATABASE_PATH):
+def crear_tabla_ventas(ruta_db=None):
+    if ruta_db is None:
+        return None
     inicializar_datos_json(ruta_db)
 
 
-def obtener_productos_para_venta(ruta_db=DATABASE_PATH):
+def obtener_productos_para_venta(ruta_db=None):
+    if ruta_db is None:
+        productos = [
+            {
+                "id": producto["id"],
+                "sku": producto["sku"],
+                "nombre": producto["nombre"],
+                "precio": float(producto["precio"]),
+                "stock_actual": int(producto["stock_actual"]),
+            }
+            for producto in get_api_client().productos.listar_todos(activo=True)
+        ]
+        productos.sort(key=lambda producto: producto["nombre"].lower())
+        return productos
+
     productos = [
         {
             "id": producto["id"],
@@ -40,7 +58,27 @@ def obtener_productos_para_venta(ruta_db=DATABASE_PATH):
     return productos
 
 
-def registrar_venta(producto_id, cliente, cantidad, usuario_id=1, ruta_db=DATABASE_PATH):
+def obtener_clientes_para_venta(ruta_db=None):
+    if ruta_db is None:
+        clientes = [
+            {
+                "id": cliente["id"],
+                "nombre": cliente["nombre"],
+            }
+            for cliente in get_api_client().clientes.listar_todos(activo=True)
+        ]
+        clientes.sort(key=lambda cliente: cliente["nombre"].lower())
+        return clientes
+
+    clientes = cargar_tabla("clientes", ruta_db)
+    return [
+        {"id": cliente["id"], "nombre": cliente["nombre"]}
+        for cliente in clientes
+        if es_activo(cliente)
+    ]
+
+
+def registrar_venta(producto_id, cliente, cantidad, usuario_id=1, ruta_db=None):
     return registrar_venta_multiple(
         cliente,
         [{"producto_id": producto_id, "cantidad": cantidad}],
@@ -49,7 +87,23 @@ def registrar_venta(producto_id, cliente, cantidad, usuario_id=1, ruta_db=DATABA
     )
 
 
-def registrar_venta_multiple(cliente, items, usuario_id=1, ruta_db=DATABASE_PATH):
+def registrar_venta_multiple(cliente, items, usuario_id=1, ruta_db=None):
+    if ruta_db is None:
+        try:
+            items_normalizados = _normalizar_items(items)
+            if not items_normalizados:
+                return False, "Debe agregar al menos un producto a la venta."
+
+            cliente_id = int(cliente) if cliente not in (None, "") else None
+            venta = get_api_client().ventas.crear(
+                cliente_id=cliente_id,
+                productos=items_normalizados,
+            )
+            total = float(venta["total"])
+            return True, f"Venta #{venta['id']} registrada correctamente. Total: L {total:.2f}"
+        except Exception as error:
+            return False, str(error)
+
     inicializar_datos_json(ruta_db)
 
     try:
@@ -107,7 +161,7 @@ def registrar_venta_multiple(cliente, items, usuario_id=1, ruta_db=DATABASE_PATH
         {
             "id": venta_id,
             "cliente_id": cliente_id,
-                "usuario_id": usuario_id,
+            "usuario_id": usuario_id,
             "fecha": fecha_actual(),
             "total": float(total),
             "estado": "Completada",
@@ -166,7 +220,18 @@ def registrar_venta_multiple(cliente, items, usuario_id=1, ruta_db=DATABASE_PATH
     return True, f"Venta #{venta_id} registrada correctamente. Total: L {total:.2f}"
 
 
-def anular_venta(venta_id, ruta_db=DATABASE_PATH):
+def anular_venta(venta_id, ruta_db=None, motivo=None):
+    if ruta_db is None:
+        try:
+            venta_id = validar_id_positivo(venta_id, "venta")
+            motivo = motivo or "Anulacion desde Tkinter"
+            venta = get_api_client().ventas.anular(venta_id, motivo)
+            return True, f"Venta #{venta['id']} anulada correctamente. Stock devuelto."
+        except ValueError as error:
+            return False, str(error)
+        except Exception as error:
+            return False, str(error)
+
     inicializar_datos_json(ruta_db)
 
     try:
@@ -248,7 +313,16 @@ def anular_venta(venta_id, ruta_db=DATABASE_PATH):
     return True, f"Venta #{venta_id} anulada correctamente. Stock devuelto."
 
 
-def obtener_ventas(ruta_db=DATABASE_PATH):
+def obtener_ventas(ruta_db=None):
+    if ruta_db is None:
+        ventas = [
+            _armar_resumen_venta_api(venta)
+            for venta in get_api_client().ventas.listar_todas()
+            if venta.get("detalles")
+        ]
+        ventas.sort(key=lambda venta: int(venta["id"]), reverse=True)
+        return ventas
+
     datos = cargar_todo(ruta_db)
     ventas = [
         _armar_resumen_venta(venta, datos)
@@ -259,7 +333,21 @@ def obtener_ventas(ruta_db=DATABASE_PATH):
     return ventas
 
 
-def obtener_detalle_venta(venta_id, ruta_db=DATABASE_PATH):
+def obtener_detalle_venta(venta_id, ruta_db=None):
+    if ruta_db is None:
+        venta = get_api_client().ventas.obtener(venta_id)
+        return [
+            {
+                "id": detalle["id"],
+                "venta_id": detalle["venta_id"],
+                "producto": detalle["producto_nombre"],
+                "cantidad": int(detalle["cantidad"]),
+                "precio_unitario": float(detalle["precio_unitario"]),
+                "subtotal": float(detalle["subtotal"]),
+            }
+            for detalle in venta.get("detalles", [])
+        ]
+
     datos = cargar_todo(ruta_db)
     detalles = _detalles_de_venta(datos["detalle_venta"], venta_id)
     detalles.sort(key=lambda detalle: int(detalle["id"]))
@@ -276,7 +364,13 @@ def obtener_detalle_venta(venta_id, ruta_db=DATABASE_PATH):
     ]
 
 
-def buscar_venta_por_id(venta_id, ruta_db=DATABASE_PATH):
+def buscar_venta_por_id(venta_id, ruta_db=None):
+    if ruta_db is None:
+        try:
+            return _armar_resumen_venta_api(get_api_client().ventas.obtener(venta_id))
+        except (ApiNotFoundError, ApiValidationError, ValueError):
+            return None
+
     datos = cargar_todo(ruta_db)
     venta = buscar_por_id(datos["ventas"], venta_id)
 
@@ -304,7 +398,9 @@ def abrir_ventas(ventana=None):
     cliente_var = tk.StringVar()
     cantidad_var = tk.StringVar(value="1")
     total_var = tk.StringVar(value="Total carrito: L 0.00")
+    session = get_user_session()
     productos_cache = {}
+    clientes_cache = {"Mostrador": None}
     carrito = []
 
     crear_encabezado(
@@ -331,7 +427,8 @@ def abrir_ventas(ventana=None):
         text="Cliente",
         style="Toolbar.TLabel",
     ).grid(row=0, column=2, sticky=tk.W, padx=4)
-    ttk.Entry(formulario, textvariable=cliente_var).grid(
+    cliente_combo = ttk.Combobox(formulario, textvariable=cliente_var, state="readonly")
+    cliente_combo.grid(
         row=0,
         column=3,
         sticky="ew",
@@ -427,7 +524,13 @@ def abrir_ventas(ventana=None):
         productos_cache.clear()
         opciones = []
 
-        for producto in obtener_productos_para_venta():
+        try:
+            productos = obtener_productos_para_venta()
+        except Exception as error:
+            messagebox.showerror("Ventas", str(error))
+            return
+
+        for producto in productos:
             etiqueta = (
                 f"{producto['id']} - {producto['nombre']} "
                 f"(Stock: {producto['stock_actual']}, L {producto['precio']:.2f})"
@@ -443,11 +546,36 @@ def abrir_ventas(ventana=None):
         producto_combo["values"] = opciones
         producto_var.set(opciones[0] if opciones else "")
 
+    def cargar_clientes():
+        clientes_cache.clear()
+        clientes_cache["Mostrador"] = None
+        opciones = ["Mostrador"]
+
+        try:
+            clientes = obtener_clientes_para_venta()
+        except Exception as error:
+            messagebox.showerror("Ventas", str(error))
+            return
+
+        for cliente in clientes:
+            etiqueta = f"{cliente['id']} - {cliente['nombre']}"
+            clientes_cache[etiqueta] = cliente["id"]
+            opciones.append(etiqueta)
+
+        cliente_combo["values"] = opciones
+        cliente_var.set(opciones[0])
+
     def cargar_ventas():
         for item in tabla_ventas.get_children():
             tabla_ventas.delete(item)
 
-        for indice, venta in enumerate(obtener_ventas()):
+        try:
+            ventas = obtener_ventas()
+        except Exception as error:
+            messagebox.showerror("Ventas", str(error))
+            return
+
+        for indice, venta in enumerate(ventas):
             tabla_ventas.insert(
                 "",
                 tk.END,
@@ -554,20 +682,24 @@ def abrir_ventas(ventana=None):
             messagebox.showwarning("Ventas", "Agregue productos al carrito.")
             return
 
-        ok, mensaje = registrar_venta_multiple(
-            cliente_var.get(),
-            [
-                {
-                    "producto_id": item["producto_id"],
-                    "cantidad": item["cantidad"],
-                }
-                for item in carrito
-            ],
-        )
+        registrar_btn.state(["disabled"])
+        try:
+            ok, mensaje = registrar_venta_multiple(
+                clientes_cache.get(cliente_var.get()),
+                [
+                    {
+                        "producto_id": item["producto_id"],
+                        "cantidad": item["cantidad"],
+                    }
+                    for item in carrito
+                ],
+            )
+        finally:
+            registrar_btn.state(["!disabled"])
 
         if ok:
             messagebox.showinfo("Ventas", mensaje)
-            cliente_var.set("")
+            cliente_var.set("Mostrador")
             cantidad_var.set("1")
             limpiar_carrito()
             cargar_productos()
@@ -596,7 +728,19 @@ def abrir_ventas(ventana=None):
         if not confirmar:
             return
 
-        ok, mensaje = anular_venta(venta_id)
+        motivo = simpledialog.askstring(
+            "Motivo de anulacion",
+            "Motivo:",
+            parent=frame,
+        )
+        if not motivo:
+            return
+
+        anular_btn.state(["disabled"])
+        try:
+            ok, mensaje = anular_venta(venta_id, motivo=motivo)
+        finally:
+            anular_btn.state(["!disabled"])
 
         if ok:
             messagebox.showinfo("Ventas", mensaje)
@@ -623,18 +767,22 @@ def abrir_ventas(ventana=None):
         command=limpiar_carrito,
         style="Info.TButton",
     ).grid(row=0, column=2, sticky=tk.W)
-    ttk.Button(
+    registrar_btn = ttk.Button(
         acciones_venta,
         text="Registrar venta",
         command=guardar_venta,
         style="Accent.TButton",
-    ).grid(row=0, column=0, sticky=tk.E, padx=(0, 6))
-    ttk.Button(
+    )
+    registrar_btn.grid(row=0, column=0, sticky=tk.E, padx=(0, 6))
+    anular_btn = ttk.Button(
         acciones_venta,
         text="Anular venta",
         command=anular_venta_seleccionada,
         style="Danger.TButton",
-    ).grid(row=0, column=1, sticky=tk.E, padx=(0, 6))
+    )
+    anular_btn.grid(row=0, column=1, sticky=tk.E, padx=(0, 6))
+    if not session.is_admin:
+        anular_btn.state(["disabled"])
     ttk.Button(
         acciones_venta,
         text="Actualizar",
@@ -643,6 +791,7 @@ def abrir_ventas(ventana=None):
     ).grid(row=0, column=2, sticky=tk.E)
 
     cargar_productos()
+    cargar_clientes()
     cargar_ventas()
     refrescar_carrito()
 
@@ -736,6 +885,33 @@ def _armar_resumen_venta(venta, datos):
         "estado": venta["estado"],
         "fecha": venta["fecha"],
     }
+
+
+def _armar_resumen_venta_api(venta):
+    detalles = venta.get("detalles", [])
+    productos = [
+        f"{detalle['producto_nombre']} x{detalle['cantidad']}"
+        for detalle in detalles
+    ]
+    cantidad_total = sum(int(detalle["cantidad"]) for detalle in detalles)
+
+    return {
+        "id": venta["id"],
+        "producto": ", ".join(productos),
+        "cliente": venta.get("cliente_nombre"),
+        "cantidad": cantidad_total,
+        "precio_unitario": None,
+        "total": float(venta["total"]),
+        "estado": _estado_venta_a_legacy(venta.get("estado")),
+        "fecha": venta.get("created_at"),
+    }
+
+
+def _estado_venta_a_legacy(estado):
+    return {
+        "COMPLETADA": "Completada",
+        "ANULADA": "Anulada",
+    }.get(str(estado), str(estado))
 
 
 def _detalles_de_venta(detalles, venta_id):

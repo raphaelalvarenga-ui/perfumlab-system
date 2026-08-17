@@ -28,17 +28,17 @@ class Producto:
     @classmethod
     def desde_fila(cls, fila):
         return cls(
-            id=fila["id"],
-            sku=fila["sku"],
-            nombre=fila["nombre"],
-            categoria_id=fila["categoria_id"],
-            marca=fila["marca"] or "",
-            descripcion=fila["descripcion"] or "",
-            costo=float(fila["costo"]),
-            precio=float(fila["precio"]),
-            stock_actual=int(fila["stock_actual"]),
-            stock_minimo=int(fila["stock_minimo"]),
-            activo=bool(fila["activo"]),
+            id=fila.get("id"),
+            sku=fila.get("sku", ""),
+            nombre=fila.get("nombre", ""),
+            categoria_id=fila.get("categoria_id"),
+            marca=fila.get("marca") or "",
+            descripcion=fila.get("descripcion") or "",
+            costo=float(fila.get("costo") or 0),
+            precio=float(fila.get("precio") or 0),
+            stock_actual=int(fila.get("stock_actual") or 0),
+            stock_minimo=int(fila.get("stock_minimo") or 0),
+            activo=bool(fila.get("activo", True)),
         )
 
     def validar(self):

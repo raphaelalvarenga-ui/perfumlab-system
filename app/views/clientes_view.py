@@ -1,6 +1,7 @@
 import tkinter as tk
 from tkinter import messagebox, ttk
 
+from app.api_client.session import get_user_session
 from app.controllers.clientes_controller import ClientesController
 from app.models.cliente import Cliente
 from app.ui_theme import aplicar_tema, configurar_tabla, crear_encabezado
@@ -9,8 +10,10 @@ from app.ui_theme import aplicar_tema, configurar_tabla, crear_encabezado
 class ClientesView(ttk.Frame):
     def __init__(self, master):
         super().__init__(master, padding=10)
+        self.session = get_user_session()
         self.clientes_controller = ClientesController()
         self.cliente_seleccionado_id = None
+        self.admin_only_buttons = []
 
         self.busqueda_var = tk.StringVar()
         self.nombre_var = tk.StringVar()
@@ -21,6 +24,7 @@ class ClientesView(ttk.Frame):
         self.estado_var = tk.StringVar(value="0 clientes")
 
         self._crear_widgets()
+        self._aplicar_permisos()
         self.cargar_clientes()
 
     def _crear_widgets(self):
@@ -177,24 +181,37 @@ class ClientesView(ttk.Frame):
         botones.columnconfigure(0, weight=1)
         botones.columnconfigure(1, weight=1)
 
-        ttk.Button(
+        guardar_btn = ttk.Button(
             botones,
             text="Guardar cliente",
-            command=self.guardar_cliente,
             style="Primary.TButton",
-        ).grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 8))
+        )
+        guardar_btn.configure(
+            command=lambda: self._ejecutar_con_boton(
+                guardar_btn,
+                self.guardar_cliente,
+            )
+        )
+        guardar_btn.grid(row=0, column=0, columnspan=2, sticky="ew", pady=(0, 8))
         ttk.Button(
             botones,
             text="Nuevo",
             command=self.limpiar_formulario,
             style="Info.TButton",
         ).grid(row=1, column=0, sticky="ew", padx=(0, 6), pady=3)
-        ttk.Button(
+        eliminar_btn = ttk.Button(
             botones,
             text="Eliminar",
-            command=self.eliminar_cliente,
             style="Danger.TButton",
-        ).grid(row=1, column=1, sticky="ew", padx=(6, 0), pady=3)
+        )
+        eliminar_btn.configure(
+            command=lambda: self._ejecutar_con_boton(
+                eliminar_btn,
+                self.eliminar_cliente,
+            )
+        )
+        eliminar_btn.grid(row=1, column=1, sticky="ew", padx=(6, 0), pady=3)
+        self.admin_only_buttons.append(eliminar_btn)
         ttk.Button(
             botones,
             text="Actualizar lista",
@@ -206,7 +223,12 @@ class ClientesView(ttk.Frame):
         for item in self.tabla.get_children():
             self.tabla.delete(item)
 
-        clientes = self._obtener_clientes_visibles()
+        try:
+            clientes = self._obtener_clientes_visibles()
+        except Exception as error:
+            messagebox.showerror("Clientes", str(error))
+            return
+
         for indice, cliente in enumerate(clientes):
             self.tabla.insert(
                 "",
@@ -278,7 +300,11 @@ class ClientesView(ttk.Frame):
         if cliente_id is None:
             return
 
-        cliente = self.clientes_controller.obtener_cliente(cliente_id)
+        try:
+            cliente = self.clientes_controller.obtener_cliente(cliente_id)
+        except Exception as error:
+            messagebox.showerror("Clientes", str(error))
+            return
         if cliente is None:
             return
 
@@ -319,6 +345,24 @@ class ClientesView(ttk.Frame):
     def _limpiar_busqueda(self):
         self.busqueda_var.set("")
         self.cargar_clientes()
+
+    def _aplicar_permisos(self):
+        if self.session.is_admin:
+            return
+        for boton in self.admin_only_buttons:
+            boton.state(["disabled"])
+
+    def _ejecutar_con_boton(self, boton, comando):
+        boton.state(["disabled"])
+        self.winfo_toplevel().configure(cursor="watch")
+        self.update_idletasks()
+        try:
+            comando()
+        finally:
+            if boton.winfo_exists():
+                self.winfo_toplevel().configure(cursor="")
+                boton.state(["!disabled"])
+        self._aplicar_permisos()
 
 
 def abrir_clientes(root=None):

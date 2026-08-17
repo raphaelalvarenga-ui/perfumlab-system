@@ -2,8 +2,9 @@ import csv
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 
+from app.api_client import get_api_client
+from app.api_client.session import get_user_session
 from app.database.json_storage import (
-    DATABASE_PATH,
     buscar_por_id,
     cargar_todo,
     es_activo,
@@ -17,9 +18,28 @@ from app.validaciones import (
 )
 
 
-def obtener_resumen_reportes(fecha_inicio=None, fecha_fin=None, ruta_db=DATABASE_PATH):
-    inicializar_datos_json(ruta_db)
+def obtener_resumen_reportes(fecha_inicio=None, fecha_fin=None, ruta_db=None):
     fecha_inicio, fecha_fin = validar_rango_fechas(fecha_inicio, fecha_fin)
+    if ruta_db is None:
+        api = get_api_client()
+        resumen = api.reportes.resumen(
+            desde=fecha_inicio,
+            hasta=fecha_fin,
+        )
+        facturas_emitidas = api.facturas.listar_todas(
+            estado="EMITIDA",
+            desde=_fecha_a_inicio_dia(fecha_inicio),
+            hasta=_fecha_a_fin_dia(fecha_fin),
+        )
+        return {
+            "cantidad_ventas": int(resumen["ventas_completadas"]),
+            "total_ventas": float(resumen["ingresos_totales"]),
+            "cantidad_facturas": int(resumen["facturas_emitidas"]),
+            "total_facturado": sum(float(factura["total"]) for factura in facturas_emitidas),
+            "productos_bajo_stock": int(resumen["productos_stock_bajo"]),
+        }
+
+    inicializar_datos_json(ruta_db)
     datos = cargar_todo(ruta_db)
     ventas_completadas = [
         venta
@@ -49,7 +69,21 @@ def obtener_resumen_reportes(fecha_inicio=None, fecha_fin=None, ruta_db=DATABASE
     }
 
 
-def obtener_productos_bajo_stock(ruta_db=DATABASE_PATH):
+def obtener_productos_bajo_stock(ruta_db=None):
+    if ruta_db is None:
+        productos = [
+            {
+                "id": producto["producto_id"],
+                "sku": producto["sku"],
+                "nombre": producto["nombre"],
+                "stock_actual": int(producto["stock_actual"]),
+                "stock_minimo": int(producto["stock_minimo"]),
+            }
+            for producto in get_api_client().reportes.stock_bajo_todo()
+        ]
+        productos.sort(key=lambda producto: (producto["stock_actual"], producto["nombre"].lower()))
+        return productos
+
     datos = cargar_todo(ruta_db)
     productos = [
         {
@@ -70,9 +104,33 @@ def obtener_productos_bajo_stock(ruta_db=DATABASE_PATH):
 def obtener_productos_mas_vendidos(
     fecha_inicio=None,
     fecha_fin=None,
-    ruta_db=DATABASE_PATH,
+    ruta_db=None,
 ):
     fecha_inicio, fecha_fin = validar_rango_fechas(fecha_inicio, fecha_fin)
+    if ruta_db is None:
+        productos = [
+            {
+                "id": producto["producto_id"],
+                "sku": producto["producto_sku"],
+                "nombre": producto["producto_nombre"],
+                "cantidad_vendida": int(producto["unidades_vendidas"]),
+                "total_vendido": float(producto["ingresos"]),
+            }
+            for producto in get_api_client().reportes.productos_mas_vendidos(
+                desde=fecha_inicio,
+                hasta=fecha_fin,
+                limit=100,
+            )["items"]
+        ]
+        productos.sort(
+            key=lambda producto: (
+                producto["cantidad_vendida"],
+                producto["total_vendido"],
+            ),
+            reverse=True,
+        )
+        return productos
+
     datos = cargar_todo(ruta_db)
     ventas_validas = {
         int(venta["id"])
@@ -114,8 +172,25 @@ def obtener_productos_mas_vendidos(
     return productos
 
 
-def obtener_ventas_recientes(fecha_inicio=None, fecha_fin=None, ruta_db=DATABASE_PATH):
+def obtener_ventas_recientes(fecha_inicio=None, fecha_fin=None, ruta_db=None):
     fecha_inicio, fecha_fin = validar_rango_fechas(fecha_inicio, fecha_fin)
+    if ruta_db is None:
+        ventas = [
+            {
+                "id": venta["id"],
+                "cliente": venta.get("cliente_nombre"),
+                "total": float(venta["total"]),
+                "estado": _estado_venta_a_legacy(venta.get("estado")),
+                "fecha": venta.get("created_at"),
+            }
+            for venta in get_api_client().ventas.listar_todas(
+                desde=_fecha_a_inicio_dia(fecha_inicio),
+                hasta=_fecha_a_fin_dia(fecha_fin),
+            )
+        ]
+        ventas.sort(key=lambda venta: int(venta["id"]), reverse=True)
+        return ventas
+
     datos = cargar_todo(ruta_db)
     ventas = [
         {
@@ -149,6 +224,13 @@ def exportar_csv(ruta_archivo, filas, columnas, encabezados):
 
 
 def abrir_reportes(ventana=None):
+    if not get_user_session().is_admin:
+        messagebox.showerror(
+            "Reportes",
+            "No tiene permisos para acceder a reportes.",
+        )
+        return
+
     standalone = ventana is None
     contenedor = ventana or tk.Tk()
     raiz = contenedor.winfo_toplevel()
@@ -470,3 +552,18 @@ def _nombre_cliente(clientes, cliente_id):
 
     cliente = buscar_por_id(clientes, cliente_id)
     return cliente["nombre"] if cliente else None
+
+
+def _estado_venta_a_legacy(estado):
+    return {
+        "COMPLETADA": "Completada",
+        "ANULADA": "Anulada",
+    }.get(str(estado), str(estado))
+
+
+def _fecha_a_inicio_dia(fecha):
+    return f"{fecha}T00:00:00Z" if fecha else None
+
+
+def _fecha_a_fin_dia(fecha):
+    return f"{fecha}T23:59:59Z" if fecha else None

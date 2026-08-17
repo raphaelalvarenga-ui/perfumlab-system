@@ -14,10 +14,10 @@ class Categoria:
     @classmethod
     def desde_fila(cls, fila):
         return cls(
-            id=fila["id"],
-            nombre=fila["nombre"],
-            descripcion=fila["descripcion"] or "",
-            activo=bool(fila["activo"]),
+            id=fila.get("id"),
+            nombre=fila.get("nombre", ""),
+            descripcion=fila.get("descripcion") or "",
+            activo=bool(fila.get("activo", True)),
         )
 
     def validar(self):

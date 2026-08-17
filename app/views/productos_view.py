@@ -1,8 +1,10 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, simpledialog, ttk
 
+from app.api_client.session import get_user_session
 from app.controllers.inventario_controller import InventarioController
 from app.controllers.productos_controller import ProductosController
+from app.models.categoria import Categoria
 from app.models.producto import Producto
 from app.reportes.excel_productos import (
     exportar_productos_excel,
@@ -14,13 +16,17 @@ from app.ui_theme import COLORS, aplicar_tema, configurar_tabla, crear_encabezad
 class ProductosView(ttk.Frame):
     def __init__(self, master):
         super().__init__(master, padding=10)
+        self.session = get_user_session()
         self.productos_controller = ProductosController()
         self.inventario_controller = InventarioController()
         self.producto_seleccionado_id = None
+        self.categorias_cache = {}
+        self.admin_only_buttons = []
 
         self.sku_var = tk.StringVar()
         self.nombre_var = tk.StringVar()
         self.marca_var = tk.StringVar()
+        self.categoria_var = tk.StringVar()
         self.costo_var = tk.StringVar(value="0")
         self.precio_var = tk.StringVar(value="0")
         self.stock_var = tk.StringVar(value="0")
@@ -29,10 +35,14 @@ class ProductosView(ttk.Frame):
         self.estado_var = tk.StringVar(value="Listo.")
         self.filtrar_movimientos_var = tk.BooleanVar(value=False)
         self.descripcion_text = None
+        self.stock_entry = None
+        self.categoria_combo = None
 
         self._crear_widgets()
+        self.cargar_categorias()
         self.cargar_productos()
         self.cargar_movimientos()
+        self._aplicar_permisos()
 
     def _crear_widgets(self):
         self.columnconfigure(0, weight=1)
@@ -320,10 +330,6 @@ class ProductosView(ttk.Frame):
             ("SKU", self.sku_var, None),
             ("Nombre", self.nombre_var, None),
             ("Marca", self.marca_var, None),
-            ("Costo", self.costo_var, validar_decimal),
-            ("Precio", self.precio_var, validar_decimal),
-            ("Stock actual", self.stock_var, validar_entero),
-            ("Stock minimo", self.stock_minimo_var, validar_entero),
         ]
 
         for indice, (etiqueta, variable, validacion) in enumerate(campos, start=2):
@@ -343,8 +349,58 @@ class ProductosView(ttk.Frame):
                 pady=3,
             )
 
+        ttk.Label(contenedor, text="Categoria").grid(
+            row=5,
+            column=0,
+            sticky=tk.W,
+            pady=3,
+        )
+        categoria_frame = ttk.Frame(contenedor)
+        categoria_frame.grid(row=5, column=1, sticky="ew", pady=3)
+        categoria_frame.columnconfigure(0, weight=1)
+        self.categoria_combo = ttk.Combobox(
+            categoria_frame,
+            textvariable=self.categoria_var,
+            state="readonly",
+        )
+        self.categoria_combo.grid(row=0, column=0, sticky="ew")
+        crear_categoria_btn = ttk.Button(
+            categoria_frame,
+            text="Nueva",
+            command=self.crear_categoria,
+            style="Info.TButton",
+        )
+        crear_categoria_btn.grid(row=0, column=1, sticky=tk.E, padx=(6, 0))
+        self.admin_only_buttons.append(crear_categoria_btn)
+
+        campos = [
+            ("Costo", self.costo_var, validar_decimal),
+            ("Precio", self.precio_var, validar_decimal),
+            ("Stock actual", self.stock_var, validar_entero),
+            ("Stock minimo", self.stock_minimo_var, validar_entero),
+        ]
+
+        for indice, (etiqueta, variable, validacion) in enumerate(campos, start=6):
+            ttk.Label(contenedor, text=etiqueta).grid(
+                row=indice,
+                column=0,
+                sticky=tk.W,
+                pady=3,
+            )
+            entrada = ttk.Entry(contenedor, textvariable=variable)
+            if validacion:
+                entrada.configure(validate="key", validatecommand=validacion)
+            entrada.grid(
+                row=indice,
+                column=1,
+                sticky="ew",
+                pady=3,
+            )
+            if etiqueta == "Stock actual":
+                self.stock_entry = entrada
+
         ttk.Label(contenedor, text="Descripcion").grid(
-            row=9,
+            row=10,
             column=0,
             sticky=tk.NW,
             pady=3,
@@ -362,19 +418,21 @@ class ProductosView(ttk.Frame):
             highlightbackground=COLORS["border"],
             highlightcolor=COLORS["primary"],
         )
-        self.descripcion_text.grid(row=9, column=1, sticky="ew", pady=3)
+        self.descripcion_text.grid(row=10, column=1, sticky="ew", pady=3)
 
     def _crear_botones(self, contenedor):
         botones_frame = ttk.Frame(contenedor)
-        botones_frame.grid(row=10, column=0, columnspan=2, sticky="ew", pady=(14, 0))
+        botones_frame.grid(row=11, column=0, columnspan=2, sticky="ew", pady=(14, 0))
         botones_frame.columnconfigure(0, weight=1)
 
-        ttk.Button(
+        guardar_btn = ttk.Button(
             botones_frame,
             text="Guardar producto",
             command=self.guardar_producto,
             style="Primary.TButton",
-        ).grid(row=0, column=0, sticky="ew")
+        )
+        guardar_btn.grid(row=0, column=0, sticky="ew")
+        self.admin_only_buttons.append(guardar_btn)
 
         self._crear_grupo_botones(
             botones_frame,
@@ -429,19 +487,32 @@ class ProductosView(ttk.Frame):
         )
 
         for indice, (texto, comando, estilo) in enumerate(acciones):
-            ttk.Button(grupo, text=texto, command=comando, style=estilo).grid(
+            boton = ttk.Button(grupo, text=texto, style=estilo)
+            boton.configure(
+                command=lambda boton=boton, comando=comando: self._ejecutar_con_boton(
+                    boton,
+                    comando,
+                )
+            )
+            boton.grid(
                 row=1 + indice // 2,
                 column=indice % 2,
                 sticky="ew",
                 padx=(0, 6) if indice % 2 == 0 else (6, 0),
                 pady=3,
             )
+            if titulo in {"Producto", "Inventario", "Archivos"}:
+                self.admin_only_buttons.append(boton)
 
     def cargar_productos(self):
         for item in self.tabla.get_children():
             self.tabla.delete(item)
 
-        productos = self._obtener_productos_visibles()
+        try:
+            productos = self._obtener_productos_visibles()
+        except Exception as error:
+            messagebox.showerror("Productos", str(error))
+            return
 
         for indice, producto in enumerate(productos):
             tags = ["even" if indice % 2 else "odd"]
@@ -464,12 +535,33 @@ class ProductosView(ttk.Frame):
             )
         self._actualizar_resumen(productos)
 
+    def cargar_categorias(self):
+        self.categorias_cache.clear()
+        opciones = []
+        try:
+            categorias = self.productos_controller.listar_categorias()
+        except Exception as error:
+            messagebox.showerror("Categorias", str(error))
+            return
+
+        for categoria in categorias:
+            etiqueta = f"{categoria.id} - {categoria.nombre}"
+            self.categorias_cache[etiqueta] = categoria.id
+            opciones.append(etiqueta)
+        self.categoria_combo["values"] = opciones
+        if opciones and not self.categoria_var.get():
+            self.categoria_var.set(opciones[0])
+
     def cargar_movimientos(self):
         for item in self.tabla_movimientos.get_children():
             self.tabla_movimientos.delete(item)
 
-        producto_id = self._obtener_producto_id_para_filtro()
-        movimientos = self.inventario_controller.obtener_movimientos(producto_id)
+        try:
+            producto_id = self._obtener_producto_id_para_filtro()
+            movimientos = self.inventario_controller.obtener_movimientos(producto_id)
+        except Exception as error:
+            messagebox.showerror("Inventario", str(error))
+            return
         productos_cache = {}
 
         for indice, movimiento in enumerate(movimientos):
@@ -516,6 +608,26 @@ class ProductosView(ttk.Frame):
             messagebox.showinfo("Productos", mensaje)
         except Exception as error:
             messagebox.showerror("Productos", str(error))
+
+    def crear_categoria(self):
+        nombre = simpledialog.askstring(
+            "Nueva categoria",
+            "Nombre de la categoria:",
+            parent=self,
+        )
+        if not nombre:
+            return
+        try:
+            categoria = Categoria(nombre=nombre)
+            categoria_id = self.productos_controller.crear_categoria(categoria)
+            self.cargar_categorias()
+            for etiqueta, valor in self.categorias_cache.items():
+                if valor == categoria_id:
+                    self.categoria_var.set(etiqueta)
+                    break
+            messagebox.showinfo("Categorias", "Categoria creada correctamente.")
+        except Exception as error:
+            messagebox.showerror("Categorias", str(error))
 
     def exportar_excel(self):
         ruta_archivo = filedialog.asksaveasfilename(
@@ -654,12 +766,17 @@ class ProductosView(ttk.Frame):
         self.sku_var.set("")
         self.nombre_var.set("")
         self.marca_var.set("")
+        self.categoria_var.set("")
         self.costo_var.set("0")
         self.precio_var.set("0")
         self.stock_var.set("0")
         self.stock_minimo_var.set("0")
         self.descripcion_text.delete("1.0", tk.END)
         self.tabla.selection_remove(self.tabla.selection())
+        if self.categoria_combo["values"]:
+            self.categoria_var.set(self.categoria_combo["values"][0])
+        if self.stock_entry is not None:
+            self.stock_entry.state(["!disabled"])
 
     def _al_seleccionar_producto(self, _evento):
         producto_id = self._obtener_producto_id_seleccionado(mostrar_error=False)
@@ -674,12 +791,15 @@ class ProductosView(ttk.Frame):
         self.sku_var.set(producto.sku)
         self.nombre_var.set(producto.nombre)
         self.marca_var.set(producto.marca)
+        self._seleccionar_categoria(producto.categoria_id)
         self.costo_var.set(str(producto.costo))
         self.precio_var.set(str(producto.precio))
         self.stock_var.set(str(producto.stock_actual))
         self.stock_minimo_var.set(str(producto.stock_minimo))
         self.descripcion_text.delete("1.0", tk.END)
         self.descripcion_text.insert("1.0", producto.descripcion)
+        if self.stock_entry is not None:
+            self.stock_entry.state(["disabled"])
         if self.filtrar_movimientos_var.get():
             self.cargar_movimientos()
 
@@ -696,6 +816,7 @@ class ProductosView(ttk.Frame):
             sku=self.sku_var.get(),
             nombre=self.nombre_var.get(),
             marca=self.marca_var.get(),
+            categoria_id=self._obtener_categoria_id_formulario(),
             descripcion=self.descripcion_text.get("1.0", tk.END).strip(),
             costo=self._convertir_decimal(self.costo_var.get(), "El costo"),
             precio=self._convertir_decimal(self.precio_var.get(), "El precio"),
@@ -707,6 +828,19 @@ class ProductosView(ttk.Frame):
         )
         producto.validar()
         return producto
+
+    def _obtener_categoria_id_formulario(self):
+        categoria_id = self.categorias_cache.get(self.categoria_var.get())
+        if categoria_id is None:
+            raise ValueError("Seleccione una categoria para el producto.")
+        return categoria_id
+
+    def _seleccionar_categoria(self, categoria_id):
+        for etiqueta, valor in self.categorias_cache.items():
+            if int(valor) == int(categoria_id or 0):
+                self.categoria_var.set(etiqueta)
+                return
+        self.categoria_var.set("")
 
     def _obtener_producto_id_seleccionado(self, mostrar_error=True):
         seleccion = self.tabla.selection()
@@ -810,6 +944,24 @@ class ProductosView(ttk.Frame):
 
     def _entrada_entera_valida(self, valor):
         return valor == "" or valor.isdigit()
+
+    def _ejecutar_con_boton(self, boton, comando):
+        boton.state(["disabled"])
+        self.winfo_toplevel().configure(cursor="watch")
+        self.update_idletasks()
+        try:
+            comando()
+        finally:
+            if boton.winfo_exists():
+                self.winfo_toplevel().configure(cursor="")
+                boton.state(["!disabled"])
+        self._aplicar_permisos()
+
+    def _aplicar_permisos(self):
+        if self.session.is_admin:
+            return
+        for boton in self.admin_only_buttons:
+            boton.state(["disabled"])
 
 
 def abrir_productos(root=None):

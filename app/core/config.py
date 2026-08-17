@@ -15,6 +15,8 @@ class Settings(BaseSettings):
     fragella_api_key: str | None = None
     fragella_base_url: str = "https://api.fragella.com/api/v1"
     fragella_timeout_seconds: float = 10.0
+    perfumlab_api_url: str = "http://127.0.0.1:8000"
+    perfumlab_api_timeout_seconds: float = 10.0
 
     model_config = SettingsConfigDict(
         env_file=".env",
