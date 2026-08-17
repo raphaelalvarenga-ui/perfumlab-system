@@ -11,6 +11,9 @@ dist_actualizado/
 build/
 build_actualizado/
 backups/
+migration_reports/
+.test_tmp/
+*.dump
 
 .venv/
 .uv-cache/

@@ -958,6 +958,76 @@ no depende del rango historico de fechas. El campo `faltante_minimo` se calcula
 como `max(stock_minimo - stock_actual, 0)` y se ordenan primero los productos
 con mayor deficit.
 
+## Migracion de datos legado JSON
+
+La migracion JSON -> PostgreSQL es una herramienta puntual para pasar datos
+historicos de la aplicacion Tkinter a la API. No cambia la aplicacion de
+escritorio: Tkinter sigue usando JSON y FastAPI sigue usando PostgreSQL.
+
+La ruta legacy por defecto es:
+
+```text
+database/json
+```
+
+Esa ruta sale de `app/database/json_storage.py` usando
+`Path(__file__).resolve().parents[2] / "database" / "json"`. En codigo fuente
+apunta a la raiz del repo. En el ejecutable PyInstaller one-dir puede apuntar a
+`dist/PerfumLab/_internal/database/json`, que normalmente es una copia de build.
+
+Para auditar sin escribir nada:
+
+```powershell
+uv run python scripts/audit_legacy_data.py
+```
+
+Para auditar otra carpeta JSON:
+
+```powershell
+uv run python scripts/audit_legacy_data.py --source C:\ruta\a\database\json
+```
+
+Para simular la migracion sin escribir en PostgreSQL:
+
+```powershell
+uv run python scripts/migrate_json_to_postgres.py --dry-run
+```
+
+Para aplicar la migracion real:
+
+```powershell
+uv run python scripts/migrate_json_to_postgres.py --apply
+```
+
+Antes de aplicar, el script copia los JSON originales en
+`backups/legacy-json-YYYYMMDD-HHMMSS/` y valida SHA256 contra la fuente. Tambien
+exige `pg_dump` y crea
+`backups/postgres-before-json-migration-YYYYMMDD-HHMMSS.dump`. Si `pg_dump` no
+esta disponible o falla, la migracion real se detiene antes de escribir.
+
+El modo `--dry-run` genera un reporte en
+`migration_reports/dry-run-YYYYMMDD-HHMMSS.json`. El modo `--apply` genera
+`migration_reports/apply-YYYYMMDD-HHMMSS.json`. Esos reportes no incluyen
+secretos.
+
+La migracion aplica todo en una sola transaccion y no ejecuta `TRUNCATE`, `DROP`
+ni borrados masivos. Si hay problemas `CRITICAL`, conflictos con datos ya
+existentes en PostgreSQL o errores de constraints, se hace rollback completo.
+
+Reglas principales:
+
+- Se preservan IDs legacy de categorias, clientes, productos, ventas, detalles,
+  movimientos y facturas cuando no hay colisiones.
+- Los usuarios legacy se auditan, pero no se migran automaticamente ni se copian
+  passwords.
+- Los campos `usuario_id` historicos se migran como `NULL` salvo que exista una
+  correspondencia verificable.
+- Los correos vacios de clientes se migran como `NULL`; correos no vacios deben
+  ser unicos ignorando mayusculas/minusculas.
+- Los metadatos Fragella, acordes y notas no se inventan ni se migran desde JSON.
+- Los movimientos de inventario se insertan como historial. No se reaplican con
+  `StockService`; `productos.stock_actual` viene del JSON de productos.
+
 ## Notas sobre carpetas generadas
 
 Las carpetas `dist`, `dist_actualizado`, `build` y `build_actualizado` son
