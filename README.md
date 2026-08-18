@@ -1004,8 +1004,9 @@ database/json
 
 Esa ruta sale de `app/database/json_storage.py` usando
 `Path(__file__).resolve().parents[2] / "database" / "json"`. En codigo fuente
-apunta a la raiz del repo. En el ejecutable PyInstaller one-dir puede apuntar a
-`dist/PerfumLab/_internal/database/json`, que normalmente es una copia de build.
+apunta a la raiz del repo. En builds antiguos de PyInstaller one-dir podia
+apuntar a `dist/PerfumLab/_internal/database/json`; desde la preparacion de
+produccion FASE 13, `PerfumLab.spec` ya no empaqueta `database/json/*.json`.
 
 Para auditar sin escribir nada:
 
@@ -1067,3 +1068,169 @@ generadas por PyInstaller y normalmente no se suben al repositorio.
 
 Cada computadora puede generar su propio ejecutable siguiendo los pasos de este
 README.
+
+## Produccion FASE 13
+
+La arquitectura de produccion soportada es:
+
+```text
+PerfumLab.exe -> HTTPS -> FastAPI -> PostgreSQL
+                          |
+                          v
+                       Fragella
+```
+
+El desktop no inicia Uvicorn, no conecta a PostgreSQL y no contiene secretos del
+backend. Solo necesita una URL publica de API:
+
+```text
+PERFUMLAB_API_URL=https://api.<dominio>
+```
+
+No uses una URL real en el codigo hasta que el dominio exista. En desarrollo se
+permite `http://127.0.0.1:8000`; en `production` el build desktop exige
+`https://` y rechaza localhost.
+
+### Variables de backend
+
+En el servidor configura los secretos por variables de entorno o por el gestor
+seguro del proveedor:
+
+```text
+APP_ENV=production
+DATABASE_URL=postgresql+psycopg://...
+SECRET_KEY=...
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=60
+CORS_ORIGINS=https://app.<dominio>
+CORS_ALLOW_CREDENTIALS=true
+ENABLE_DOCS=false
+LOG_LEVEL=INFO
+PERFUME_PROVIDER=fragella
+FRAGELLA_API_KEY=...
+FRAGELLA_BASE_URL=https://api.fragella.com/api/v1
+FRAGELLA_TIMEOUT_SECONDS=10
+```
+
+`SECRET_KEY` se valida en `production`: no se aceptan placeholders como
+`change_this_secret_key`, `secret`, `password`, `test` o `placeholder`, ni
+valores cortos. `DATABASE_URL` debe ser PostgreSQL en produccion; SQLite queda
+solo para pruebas/desarrollo cuando aplique.
+
+### Backend
+
+Antes de levantar una version nueva:
+
+```powershell
+uv run alembic upgrade head
+```
+
+Arranque de desarrollo:
+
+```powershell
+uv run uvicorn app.main_api:app --reload
+```
+
+Arranque de produccion, sin `--reload`:
+
+```powershell
+uv run uvicorn app.main_api:app --host 0.0.0.0 --port 8000
+```
+
+Tambien existe `Dockerfile` para correr FastAPI en container. La imagen no
+incluye `.env`, `.git`, backups, `dist`, `build`, tests ni `database/json`.
+PostgreSQL debe ser externo/administrado; no se instala dentro de la imagen.
+
+### HTTPS y proxy
+
+Publica la API detras de un reverse proxy HTTPS como Caddy, Nginx o la capa TLS
+del proveedor cloud. El firewall debe exponer solo `443` hacia la API. PostgreSQL
+`5432` debe quedar privado o restringido para que solo el backend pueda
+conectarse.
+
+Si usas el `Dockerfile`, `uvicorn` corre con `--proxy-headers` y
+`FORWARDED_ALLOW_IPS` configurable. No uses `*` salvo que el entorno de red sea
+controlado y entendido.
+
+### Health y docs
+
+Endpoints esperados:
+
+```text
+GET /
+GET /api/v1/health
+GET /api/v1/health/db
+```
+
+`/api/v1/health` no requiere DB. `/api/v1/health/db` ejecuta una comprobacion
+simple contra PostgreSQL sin revelar credenciales.
+
+`ENABLE_DOCS=true` deja disponibles `/docs`, `/redoc` y `/openapi.json`.
+`ENABLE_DOCS=false` los deshabilita sin afectar la API.
+
+### Backup y restore
+
+Backup seguro con `pg_dump`:
+
+```powershell
+uv run python scripts/backup_postgres.py
+```
+
+El script lee `DATABASE_URL`, no imprime passwords y deja el backup en
+`backups/postgres-backup-YYYYMMDD-HHMMSS.dump`.
+
+Restore manual, en un entorno controlado:
+
+```powershell
+pg_restore --clean --if-exists --dbname "<DATABASE_URL_DESTINO>" backups\archivo.dump
+```
+
+Para backup plano:
+
+```powershell
+uv run python scripts/backup_postgres.py --format plain
+psql "<DATABASE_URL_DESTINO>" -f backups\archivo.sql
+```
+
+No hay restore automatico desde la aplicacion.
+
+### Build desktop
+
+Build local/desarrollo:
+
+```powershell
+uv run python scripts/build_desktop.py --mode development --api-url http://127.0.0.1:8000
+```
+
+Build produccion:
+
+```powershell
+uv run python scripts/build_desktop.py --mode production --api-url https://api.<dominio>
+```
+
+Salida esperada:
+
+```text
+dist/PerfumLab/PerfumLab.exe
+dist/PerfumLab/perfumlab_desktop.json
+```
+
+`perfumlab_desktop.json` contiene solo datos no sensibles: modo, API URL,
+timeout, nombre y version. El `.spec` incluye assets e icono, pero no `.env`,
+scripts administrativos, Alembic ni `database/json/*.json` como datos.
+
+Smoke real del ejecutable, con API local o desplegada:
+
+```powershell
+uv run python scripts/smoke_desktop_exe.py --api-url http://127.0.0.1:8000
+```
+
+Ese runner crea usuarios temporales `TEST-PACK-*`, ejecuta el EXE real en modo
+smoke, valida login admin/vendedor, productos, clientes, inventario, venta,
+factura, reportes, permisos, logout y luego limpia los datos temporales.
+
+### Installer
+
+No se implementa auto-update en esta fase. Si Inno Setup o NSIS ya estan
+disponibles, se puede crear un instalador en una fase posterior, pero no debe
+instalar PostgreSQL ni pedir passwords de base de datos al usuario final.

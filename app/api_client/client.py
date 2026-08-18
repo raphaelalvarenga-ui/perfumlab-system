@@ -17,7 +17,7 @@ from app.api_client.exceptions import (
     detail_to_message,
 )
 from app.api_client.session import UserSession, get_user_session
-from app.core.config import get_settings
+from app.desktop_config import get_desktop_config
 
 
 class ApiClient:
@@ -29,10 +29,19 @@ class ApiClient:
         session: UserSession | None = None,
         transport: httpx.BaseTransport | None = None,
     ):
-        settings = get_settings()
-        api_url = base_url or settings.perfumlab_api_url
+        configured_timeout = None
+        if base_url is None:
+            try:
+                desktop_config = get_desktop_config()
+            except ValueError as error:
+                raise ApiConnectionError(str(error)) from error
+            api_url = desktop_config.api_url
+            configured_timeout = desktop_config.timeout_seconds
+        else:
+            api_url = base_url
+
         self.base_url = self._normalizar_base_url(api_url)
-        self.timeout = timeout or settings.perfumlab_api_timeout_seconds
+        self.timeout = timeout if timeout is not None else configured_timeout or 10.0
         self.session = session or get_user_session()
         self.on_authentication_error: Callable[[ApiAuthenticationError], None] | None = None
         self.http = httpx.Client(

@@ -1,0 +1,16 @@
+.env
+.git
+__pycache__
+*.pyc
+.pytest_cache
+.venv
+.uv-cache
+backups
+migration_reports
+build
+dist
+*.dump
+.test_tmp
+database/json
+docs
+tests

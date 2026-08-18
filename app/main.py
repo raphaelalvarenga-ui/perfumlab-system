@@ -1,4 +1,6 @@
 import importlib
+import logging
+import os
 import sys
 import tkinter as tk
 from pathlib import Path
@@ -11,10 +13,14 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from app.api_client import get_api_client, reset_api_client
 from app.api_client.session import get_user_session
-from app.core.config import get_settings
+from app.desktop_config import get_desktop_config
+from app.desktop_logging import configure_desktop_logging
 from app.ui_theme import aplicar_tema
 from app.views.clientes_view import abrir_clientes
 from app.views.productos_view import abrir_productos
+
+
+logger = logging.getLogger("app.desktop")
 
 
 class PerfumLabApp:
@@ -303,6 +309,14 @@ def crear_menu_principal(root, app):
 
 
 def main():
+    configure_desktop_logging()
+    logger.info("desktop_startup")
+
+    if os.getenv("PERFUMLAB_DESKTOP_SMOKE") == "1":
+        from app.desktop_smoke import run_desktop_smoke
+
+        raise SystemExit(run_desktop_smoke())
+
     root = tk.Tk()
     root.withdraw()
     aplicar_tema(root)
@@ -310,12 +324,12 @@ def main():
     try:
         verificar_api_disponible()
     except Exception as error:
-        settings = get_settings()
+        logger.warning("api_connection_failed error_type=%s", type(error).__name__)
         messagebox.showerror(
             "Perfum Lab API",
             "No se pudo conectar con Perfum Lab API.\n\n"
             "Verifique que el servidor este iniciado.\n\n"
-            f"URL: {settings.perfumlab_api_url}\n"
+            f"URL: {_api_url_configurada()}\n"
             f"Detalle: {error}",
         )
         reset_api_client()
@@ -334,6 +348,13 @@ def main():
 
 def verificar_api_disponible():
     get_api_client().health_check(include_db=True)
+
+
+def _api_url_configurada() -> str:
+    try:
+        return get_desktop_config().api_url
+    except ValueError:
+        return "PERFUMLAB_API_URL invalida"
 
 
 def mostrar_login(root):

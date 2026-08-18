@@ -6,7 +6,6 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        ('database\\json\\*.json', 'database\\json'),
         ('assets\\logo\\logoperfumlab.ico', 'assets\\logo'),
         ('assets\\logo\\logoperfumlab.png', 'assets\\logo'),
         ('assets\\logo\\logoperfumlab-window.ico', 'assets\\logo'),
@@ -18,6 +17,7 @@ a = Analysis(
         'app.reportes.reportes',
         'app.reportes.excel_productos',
         'app.views.clientes_view',
+        'app.desktop_smoke',
     ],
     hookspath=[],
     hooksconfig={},
