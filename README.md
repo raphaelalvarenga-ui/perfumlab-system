@@ -1,674 +1,423 @@
 # Perfum Lab
 
-Sistema de escritorio para administrar productos, inventario, clientes,
-ventas, facturas y reportes de una empresa de perfumes.
+Perfum Lab es un sistema empresarial de gestion de perfumeria. Permite
+administrar productos, categorias, inventario, clientes, ventas, facturas,
+reportes y perfiles olfativos de fragancias desde una aplicacion de escritorio
+Tkinter conectada a una API REST FastAPI.
 
-## Requisitos
+Estado verificado de esta copia del repositorio: `2026-08-19`.
 
-Antes de empezar, la computadora debe tener instalado:
+## Resumen
 
-- Python.
-- Git.
+| Area | Estado actual |
+| --- | --- |
+| Aplicacion de escritorio | `PerfumLab.exe` / Tkinter |
+| Backend | FastAPI REST API |
+| Base de datos activa | PostgreSQL, en produccion alojada en Neon |
+| Despliegue backend | Vercel |
+| API publica actual | `https://perfumlab-system.vercel.app` |
+| Proveedor externo | Fragella API, consumida solo desde FastAPI |
+| Persistencia legacy | JSON conservado para compatibilidad, pruebas y migracion, no como almacenamiento principal |
+| Migracion Alembic head | `20260812_0008` |
+| Suite de pruebas documentada | `uv run pytest` |
 
-Para verificarlo en PowerShell:
+## Arquitectura
 
-```powershell
-python --version
-git --version
-```
-
-Si alguno de esos comandos no funciona, primero se debe instalar Python o Git.
-
-## Descargar el proyecto
-
-En la computadora donde se va a instalar el sistema, abrir PowerShell y ubicarse
-en la carpeta donde se quiere guardar el proyecto. Por ejemplo:
-
-```powershell
-cd C:\Users\TU_USUARIO\OneDrive\Escritorio
-git clone https://github.com/raphaelalvarenga-ui/perfumlab-system.git
-cd perfumlab-system
-```
-
-Importante: todos los comandos siguientes se ejecutan dentro de la carpeta
-`perfumlab-system`, donde estan los archivos `README.md`, `crear_db.py`,
-`requirements.txt` y `PerfumLab.spec`.
-
-Si aparece un error como `can't open file` o `requirements.txt not found`,
-casi siempre significa que PowerShell esta en la carpeta incorrecta. Se corrige
-entrando a la carpeta del proyecto:
-
-```powershell
-cd C:\Users\TU_USUARIO\OneDrive\Escritorio\perfumlab-system
-```
-
-## Instalar dependencias
-
-Desde la carpeta del proyecto:
-
-```powershell
-python -m pip install --upgrade pip
-python -m pip install -r requirements.txt
-```
-
-El archivo `requirements.txt` instala las dependencias necesarias, incluyendo:
-
-- `openpyxl`, para importar y exportar productos en Excel.
-- `pyinstaller`, para generar el ejecutable `.exe`.
-
-## Ejecutar el programa desde el codigo
-
-La aplicacion de escritorio ahora usa la API REST. El orden de desarrollo es:
-
-```powershell
-# Terminal 1
-uv run uvicorn app.main_api:app --reload
-
-# Terminal 2
-uv run python -m app.main
-```
-
-Antes de abrir Tkinter, PostgreSQL debe estar iniciado y FastAPI debe responder
-correctamente en `PERFUMLAB_API_URL`, por defecto `http://127.0.0.1:8000`.
-
-Al iniciar, Tkinter ejecuta `GET /api/v1/health` y `GET /api/v1/health/db`.
-Si la API o PostgreSQL no estan disponibles, muestra un mensaje claro y no abre
-los modulos empresariales.
-
-## Generar el ejecutable .exe
-
-Para crear el ejecutable:
-
-```powershell
-python -m PyInstaller --noconfirm --clean .\PerfumLab.spec
-```
-
-El ejecutable de escritorio no inicia FastAPI por si solo. Para usarlo, la API
-REST y PostgreSQL deben estar disponibles en la URL configurada.
-
-Cuando termine, el ejecutable queda en:
+La arquitectura de produccion es:
 
 ```text
-dist\PerfumLab\PerfumLab.exe
+PerfumLab.exe / Tkinter
+        |
+        | HTTPS + REST + JWT
+        v
+FastAPI REST API
+        |
+        | SQLAlchemy + psycopg
+        v
+PostgreSQL / Neon
+
+FastAPI REST API
+        |
+        | httpx + x-api-key
+        v
+Fragella API
 ```
 
-Para abrirlo desde PowerShell:
+La aplicacion de escritorio no se conecta directamente a PostgreSQL ni a
+Fragella. El EXE solo conoce la URL publica de la API y guarda el JWT de sesion
+en memoria. Fragella se consume exclusivamente desde el backend, lo que evita
+exponer la API key en el cliente de escritorio y permite controlar cuota,
+timeouts, reintentos y errores externos en un solo lugar.
 
-```powershell
-.\dist\PerfumLab\PerfumLab.exe
-```
+Los archivos JSON historicos siguen en `database/json`, y algunas capas aceptan
+`ruta_db` para pruebas o compatibilidad legacy. En el flujo productivo actual,
+Tkinter usa la API REST y PostgreSQL es la fuente activa de datos.
 
-Tambien se puede abrir haciendo doble clic sobre `PerfumLab.exe`.
+## Tecnologias
 
-Importante: si se va a pasar el programa a otra computadora, se debe pasar toda
-la carpeta:
+Las dependencias versionadas estan en `requirements.txt`. Esta copia del repo no
+contiene `pyproject.toml` ni `uv.lock`; por eso la instalacion base usa
+`requirements.txt`. `uv` se usa como runner de comandos cuando esta disponible.
+
+Tecnologias y librerias principales:
+
+- Python
+- Tkinter
+- FastAPI
+- PostgreSQL / Neon
+- SQLAlchemy
+- Alembic
+- Pydantic / pydantic-settings
+- httpx
+- JWT con PyJWT
+- Hash de passwords con `pwdlib[argon2]`
+- pytest
+- PyInstaller
+- openpyxl
+- Vercel
+- Fragella API
+- Dockerfile opcional para backend
+
+## Estructura del proyecto
 
 ```text
-dist\PerfumLab
+app/
+  api/                  Rutas FastAPI, dependencias y router /api/v1
+  api_client/           Cliente REST usado por Tkinter
+  controllers/          Controladores de escritorio con modo API y compatibilidad JSON
+  core/                 Configuracion, seguridad y utilidades comunes
+  database/             Sesion SQLAlchemy y almacenamiento JSON legacy
+  facturas/             Pantalla y exportacion PDF/TXT desde escritorio
+  integrations/         Abstraccion de proveedor y FragellaProvider
+  models/               Modelos de dominio y ORM
+  repositories/         Acceso a datos SQLAlchemy
+  reportes/             Reportes de escritorio, CSV y Excel de productos
+  schemas/              Esquemas Pydantic
+  services/             Logica de negocio y transacciones
+  ventas/               Pantalla de ventas de escritorio
+  views/                Vistas Tkinter de productos y clientes
+  desktop_config.py     Configuracion segura del desktop
+  index.py              Entrada compatible con Vercel
+  main.py               Entrada de la aplicacion Tkinter
+  main_api.py           Entrada de FastAPI
+alembic/
+  versions/             Migraciones PostgreSQL
+assets/
+  logo/                 Iconos y logos usados por el EXE
+database/json/          Datos historicos legacy
+deploy/                 Guia corta de despliegue
+docs/                   Documentacion del proyecto
+scripts/                Admin, backup, migracion JSON, build y smoke del EXE
+tests/                  Pruebas API, cliente REST, integraciones, migracion y QA
+PerfumLab.spec          Configuracion PyInstaller onedir
+Dockerfile              Imagen opcional para FastAPI
+requirements.txt        Dependencias del proyecto
+alembic.ini             Configuracion Alembic
 ```
 
-No se debe pasar solo el archivo `.exe`, porque la carpeta `_internal` contiene
-dependencias, imagenes y archivos que el programa necesita para funcionar.
-
-## Si PyInstaller no puede borrar dist
-
-A veces PyInstaller falla con un error como:
-
-```text
-PermissionError: [WinError 5] Access is denied: dist\PerfumLab
-```
-
-Esto suele pasar si:
-
-- El programa `PerfumLab.exe` esta abierto.
-- Alguna ventana del Explorador de archivos esta dentro de `dist\PerfumLab`.
-- OneDrive esta bloqueando o sincronizando esa carpeta.
-
-Primero cerrar `PerfumLab.exe` y cerrar ventanas abiertas dentro de `dist`.
-Luego volver a ejecutar:
-
-```powershell
-python -m PyInstaller --noconfirm --clean .\PerfumLab.spec
-```
-
-Si el error continua, generar el ejecutable en una carpeta nueva:
-
-```powershell
-python -m PyInstaller --noconfirm --clean --distpath dist_actualizado --workpath build_actualizado .\PerfumLab.spec
-```
-
-En ese caso, el ejecutable actualizado queda en:
-
-```text
-dist_actualizado\PerfumLab\PerfumLab.exe
-```
-
-Y si se va a compartir, se debe pasar toda la carpeta:
-
-```text
-dist_actualizado\PerfumLab
-```
-
-## Actualizar el proyecto desde GitHub
-
-Si el proyecto ya estaba clonado y solo se quieren descargar cambios nuevos:
-
-```powershell
-cd C:\Users\TU_USUARIO\OneDrive\Escritorio\perfumlab-system
-git switch main
-git pull origin main
-python -m pip install -r requirements.txt
-uv run alembic upgrade head
-```
-
-Despues de actualizar el codigo, si se quiere un `.exe` actualizado, hay que
-generarlo otra vez:
-
-```powershell
-python -m PyInstaller --noconfirm --clean .\PerfumLab.spec
-```
-
-El `.exe` anterior no se actualiza solo.
-
-## Archivos importantes
-
-- `app\main.py`: abre la aplicacion.
-- `app\main_api.py`: abre la API REST con FastAPI.
-- `crear_db.py`: utilidad legacy para archivos JSON historicos.
-- `database\json`: respaldo legacy; ya no es la fuente activa del sistema.
-- `PerfumLab.spec`: configuracion para crear el `.exe`.
-- `requirements.txt`: dependencias del proyecto.
-- `docs`: documentos y reportes del proyecto.
-
-## API REST
-
-La arquitectura activa es:
-
-```text
-Tkinter -> REST API -> FastAPI -> PostgreSQL
-```
-
-PostgreSQL es la unica fuente activa de datos empresariales. Los archivos JSON
-se conservan como legado, respaldo y referencia historica; Tkinter no debe
-leerlos ni escribirlos durante los flujos activos de categorias, productos,
-clientes, inventario, ventas, facturas o reportes.
-
-### Instalar dependencias
-
-Desde la carpeta principal del proyecto:
-
-```powershell
-python -m pip install -r requirements.txt
-```
-
-### Configurar variables de entorno
-
-Crear un archivo `.env` tomando como referencia `.env.example`:
-
-```text
-APP_NAME=Perfum Lab API
-APP_VERSION=1.0.0
-DATABASE_URL=postgresql+psycopg://postgres:password@localhost:5432/perfumlab
-SECRET_KEY=change_this_secret_key
-JWT_ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=60
-CORS_ORIGINS=http://localhost:3000,http://localhost:5173
-PERFUME_PROVIDER=fragella
-FRAGELLA_API_KEY=
-FRAGELLA_BASE_URL=https://api.fragella.com/api/v1
-FRAGELLA_TIMEOUT_SECONDS=10
-PERFUMLAB_API_URL=http://127.0.0.1:8000
-PERFUMLAB_API_TIMEOUT_SECONDS=10
-```
-
-No se deben guardar contrasenas reales en el codigo. El archivo `.env` esta
-ignorado por Git; `.env.example` queda versionado como plantilla.
-
-### Crear la base PostgreSQL
-
-Crear una base de datos llamada `perfumlab` en PostgreSQL. El usuario, clave,
-host y puerto deben coincidir con `DATABASE_URL`.
-
-Ejemplo desde `psql`:
-
-```sql
-CREATE DATABASE perfumlab;
-```
-
-### Ejecutar migraciones
-
-Alembic toma `DATABASE_URL` desde la misma configuracion de la aplicacion:
-
-```powershell
-alembic upgrade head
-```
-
-La migracion inicial de la API crea las tablas:
-
-- `categorias`
-- `productos`
-
-La migracion de clientes crea la tabla:
-
-- `clientes`
-
-La migracion de inventario crea:
-
-- el tipo PostgreSQL `tipo_movimiento_inventario`
-- `movimientos_inventario`
-
-Las migraciones de ventas, facturas y autenticacion crean:
-
-- `ventas`
-- `detalle_ventas`
-- `facturas`
-- el tipo PostgreSQL `rol_usuario`
-- `usuarios`
-- columnas y llaves foraneas nullable de auditoria hacia `usuarios`
-
-La migracion de informacion olfativa crea:
-
-- el tipo PostgreSQL `tipo_nota`
-- el tipo PostgreSQL `intensidad_acorde`
-- `acordes`
-- `notas`
-- `producto_acordes`
-- `producto_notas`
-
-La migracion de metadatos externos agrega a `productos`:
-
-- `external_image_url`
-- `external_transparent_image_url`
-- unicidad compuesta para `external_provider` + `external_id`
-
-Para volver atras una migracion:
-
-```powershell
-alembic downgrade -1
-```
-
-### Ejecutar FastAPI
-
-```powershell
-uv run uvicorn app.main_api:app --reload
-```
-
-Swagger queda disponible en:
-
-```text
-http://127.0.0.1:8000/docs
-```
-
-ReDoc queda disponible en:
-
-```text
-http://127.0.0.1:8000/redoc
-```
-
-### Comprobar health
-
-```text
-GET http://127.0.0.1:8000/
-GET http://127.0.0.1:8000/api/v1/health
-GET http://127.0.0.1:8000/api/v1/health/db
-```
-
-`/api/v1/health/db` ejecuta `SELECT 1` contra PostgreSQL. Si `DATABASE_URL` no
-esta configurado o PostgreSQL no esta disponible, responde con un error
-controlado sin exponer credenciales.
-
-### Ejecutar Tkinter
-
-Con FastAPI encendido:
-
-```powershell
-uv run python -m app.main
-```
-
-Tkinter muestra login, guarda el JWT solamente en memoria y agrega
-`Authorization: Bearer <token>` desde el cliente REST centralizado. Al cerrar
-sesion o cerrar la ventana se limpia la sesion y se cierra el cliente HTTP.
-
-No se arranca Uvicorn automaticamente desde Tkinter en esta fase.
+## Modulos funcionales
 
 ### Autenticacion y usuarios
 
-La API usa access tokens JWT con `Authorization: Bearer <token>`. No hay refresh
-tokens en esta fase. El token incluye `sub`, `iat`, `exp` y `ver`; cada request
-protegido consulta PostgreSQL para validar que el usuario exista, este activo,
-mantenga la misma `token_version` y tenga el rol actual requerido.
+- Login por `POST /api/v1/auth/login`.
+- Sesion con JWT `Authorization: Bearer <token>`.
+- Consulta de usuario autenticado con `GET /api/v1/auth/me`.
+- Cambio de password con invalidacion de tokens anteriores.
+- Roles reales:
+  - `ADMINISTRADOR`
+  - `VENDEDOR`
+- Usuarios administrados por endpoints bajo `/api/v1/usuarios`.
+- Passwords almacenados solo como hash.
+- Auditoria de usuario en ventas, movimientos de inventario, facturas y
+  anulaciones.
 
-Antes de usar endpoints protegidos, crear el primer administrador localmente:
+### Categorias
 
-```powershell
-uv run python scripts/create_admin.py
-```
+- CRUD de categorias por API.
+- Soft delete con `activo = false`.
+- Nombre unico case-insensitive.
+- Productos no pueden asociarse a categorias inactivas.
 
-El script pide nombre, username, email opcional y contrasena con `getpass`. No
-recibe contrasenas por argumentos, no imprime hashes y no crea un registro
-publico.
+### Productos
 
-Para iniciar sesion:
+- CRUD de productos por API.
+- SKU unico case-insensitive.
+- Campos principales: SKU, nombre, categoria, marca, descripcion, costo,
+  precio, stock actual, stock minimo y estado activo/inactivo.
+- Campos especializados de perfumeria: genero, anio de lanzamiento,
+  concentracion, duracion, estela y metadatos externos.
+- Busqueda y filtros por texto, marca, categoria, genero, activo, stock bajo,
+  acorde, nota y tipo de nota.
+- El stock inicial puede indicarse al crear producto. Despues, los cambios de
+  stock se hacen por Inventario para conservar historial.
+
+### Inventario
+
+- Movimientos reales:
+  - `ENTRADA`
+  - `SALIDA`
+  - `AJUSTE`
+- Registro de cantidad, stock anterior, stock nuevo, motivo, fecha y usuario.
+- Operaciones atomicas con bloqueo de fila del producto.
+- Historial consultable por producto, tipo y rango de fechas.
+- No existen endpoints para editar o borrar movimientos; un error se corrige
+  con un nuevo ajuste.
+
+### Clientes
+
+- CRUD de clientes por API.
+- Clientes con o sin correo.
+- Correos normalizados a minusculas y unicos case-insensitive cuando existen.
+- Soft delete con `activo = false`.
+- Busqueda por nombre, correo y telefono.
+
+### Ventas
+
+- Registro de ventas con cliente opcional.
+- Venta de mostrador cuando `cliente_id` es nulo.
+- Productos repetidos en el request se agrupan antes de procesar.
+- El backend toma precios desde PostgreSQL, calcula subtotales y total.
+- Descuento de inventario mediante movimientos `SALIDA`.
+- Estados reales: `COMPLETADA` y `ANULADA`.
+- Anulacion con reposicion de stock, movimientos `ENTRADA`, motivo y auditoria.
+- Snapshots historicos de SKU, nombre y precio en `detalle_ventas`.
+
+### Facturas
+
+- Facturacion asociada a ventas con `POST /api/v1/ventas/{venta_id}/factura`.
+- Numeracion derivada del ID de venta con formato `FAC-000015`.
+- Estados reales: `EMITIDA` y `ANULADA`.
+- Una venta solo puede tener una factura.
+- Si una venta facturada se anula, la factura queda `ANULADA`.
+- La API consulta factura y detalle, pero no expone endpoint PDF.
+- La aplicacion Tkinter genera y exporta PDF desde `app/facturas/facturas.py`
+  usando los datos consultados por la API.
+
+### Reportes
+
+Reportes FastAPI de solo lectura, restringidos a `ADMINISTRADOR`:
+
+- Resumen operativo.
+- Ventas agrupadas por dia o mes.
+- Productos mas vendidos.
+- Bajo stock.
+
+La aplicacion de escritorio muestra reportes y permite exportar CSV. La vista de
+productos permite exportar e importar inventario en Excel con `openpyxl`.
+
+## Perfil olfativo
+
+El backend tiene un modelo normalizado para informacion olfativa:
+
+- `acordes`
+- `notas`
+- Tipos de nota:
+  - `SALIDA`
+  - `CORAZON`
+  - `FONDO`
+- Relacion `producto_acordes`.
+- Relacion `producto_notas`.
+- Intensidades de acordes:
+  - `DOMINANTE`
+  - `PROMINENTE`
+  - `MODERADO`
+  - `SUTIL`
+
+Endpoints reales:
 
 ```text
-POST /api/v1/auth/login
+GET /api/v1/acordes
+GET /api/v1/acordes/{acorde_id}
+POST /api/v1/acordes
+PATCH /api/v1/acordes/{acorde_id}
+DELETE /api/v1/acordes/{acorde_id}
+
+GET /api/v1/notas
+GET /api/v1/notas/{nota_id}
+POST /api/v1/notas
+PATCH /api/v1/notas/{nota_id}
+DELETE /api/v1/notas/{nota_id}
+
+GET /api/v1/productos/{producto_id}/perfil-olfativo
+PUT /api/v1/productos/{producto_id}/perfil-olfativo
 ```
 
-El login usa formulario OAuth2 compatible con Swagger:
+`GET /perfil-olfativo` devuelve los acordes y las notas agrupadas por salida,
+corazon y fondo. `PUT /perfil-olfativo` reemplaza el perfil completo en una sola
+transaccion y requiere rol `ADMINISTRADOR`.
+
+## Perfil olfativo en el EXE
+
+La aplicacion Tkinter ya visualiza el perfil olfativo desde la pantalla
+`Productos e inventario`.
+
+Flujo implementado:
 
 ```text
-username=admin
-password=...
+ProductosView
+    |
+    v
+ProductosController
+    |
+    v
+ProductosApi
+    |
+    v
+GET /api/v1/productos/{producto_id}/perfil-olfativo
+    |
+    v
+PostgreSQL / Neon
 ```
 
-Respuesta:
+Archivos involucrados:
 
-```json
-{
-  "access_token": "...",
-  "token_type": "bearer"
-}
+- `app/api_client/productos.py`
+- `app/controllers/productos_controller.py`
+- `app/views/productos_view.py`
+
+Al seleccionar un producto, el panel derecho puede mostrar:
+
+- Acordes principales.
+- Notas de salida.
+- Notas de corazon.
+- Notas de fondo.
+
+Esta visualizacion lee datos ya almacenados en PostgreSQL. No hace una llamada a
+Fragella cada vez que se abre o selecciona un producto. Esto es importante para
+controlar la cuota del proveedor externo y para mantener una experiencia rapida
+en el EXE.
+
+## Integracion Fragella
+
+Proveedor externo: Fragella.
+
+La integracion se configura con variables de entorno del backend:
+
+```text
+PERFUME_PROVIDER=fragella
+FRAGELLA_API_KEY=YOUR_FRAGELLA_API_KEY
+FRAGELLA_BASE_URL=https://api.fragella.com/api/v1
+FRAGELLA_TIMEOUT_SECONDS=10
 ```
 
-En Swagger (`/docs`) usar el boton `Authorize` y pegar el token Bearer. Endpoints
-de Auth:
+No se debe incluir la API key en el cliente de escritorio, logs, respuestas JSON,
+Swagger, Git ni bases de datos. El backend usa `httpx` y envia la key con el
+header `x-api-key`.
+
+Rutas reales:
+
+```text
+GET  /api/v1/integraciones/fragella/status
+GET  /api/v1/integraciones/fragella/usage
+
+GET  /api/v1/productos/{producto_id}/proveedor/candidatos?limit=5
+GET  /api/v1/productos/{producto_id}/proveedor/candidatos/{external_id}
+POST /api/v1/productos/{producto_id}/sincronizar-proveedor
+GET  /api/v1/productos/{producto_id}/similares?limit=5
+```
+
+Capacidades implementadas:
+
+- Comprobar si Fragella esta configurado.
+- Consultar uso/cuota.
+- Buscar candidatos para asociar un producto local con una fragancia externa.
+- Obtener preview/detalle de un candidato.
+- Sincronizar datos del proveedor hacia PostgreSQL.
+- Consultar perfumes similares.
+
+La sincronizacion guarda localmente:
+
+- `external_provider`
+- `external_id`
+- `external_last_sync`
+- `external_image_url`
+- `external_transparent_image_url`
+- Metadatos disponibles: genero, anio, concentracion, duracion y estela.
+- Acordes.
+- Notas de salida, corazon y fondo.
+
+La sincronizacion no modifica datos de negocio como SKU, nombre, marca, costo,
+precio, stock, categoria o estado activo. Si Fragella devuelve `None` para un
+metadato, se conserva el valor local existente.
+
+### Notas sobre cuota y disponibilidad
+
+Las operaciones que consultan Fragella dependen de disponibilidad, plan y cuota
+del proveedor. Los perfiles ya sincronizados se leen desde PostgreSQL y no
+consumen nuevas solicitudes a Fragella. La consulta de similares existe en el
+backend, pero durante pruebas reales puede quedar limitada por cuota/rate limit
+del proveedor; eso no bloquea la funcionalidad principal de productos, perfil
+olfativo sincronizado y visualizacion en escritorio.
+
+## Endpoints principales
+
+Todos los endpoints bajo `/api/v1`, excepto health y login, requieren JWT.
+
+### Salud
+
+```text
+GET /
+GET /api/v1/health
+GET /api/v1/health/db
+```
+
+`/api/v1/health/db` ejecuta una comprobacion simple contra PostgreSQL sin
+exponer credenciales.
+
+### Auth y usuarios
 
 ```text
 POST /api/v1/auth/login
 GET  /api/v1/auth/me
 POST /api/v1/auth/change-password
-```
 
-`GET /api/v1/auth/me` devuelve el usuario autenticado sin `password` ni
-`password_hash`. `POST /api/v1/auth/change-password` valida la contrasena actual,
-hashea la nueva con Argon2 y aumenta `token_version`, por lo que los tokens
-anteriores quedan invalidos.
-
-Endpoints de usuarios, solo para `ADMINISTRADOR`:
-
-```text
 POST   /api/v1/usuarios
 GET    /api/v1/usuarios
-GET    /api/v1/usuarios/{id}
-PATCH  /api/v1/usuarios/{id}
-DELETE /api/v1/usuarios/{id}
-POST   /api/v1/usuarios/{id}/reset-password
+GET    /api/v1/usuarios/{usuario_id}
+PATCH  /api/v1/usuarios/{usuario_id}
+DELETE /api/v1/usuarios/{usuario_id}
+POST   /api/v1/usuarios/{usuario_id}/reset-password
 ```
 
-`DELETE` hace soft delete con `activo = false`. No borra fisicamente usuarios,
-porque ventas, movimientos y facturas conservan auditoria. El reset de password
-tambien incrementa `token_version`.
-
-Roles disponibles:
-
-```text
-ADMINISTRADOR
-VENDEDOR
-```
-
-Permisos principales:
-
-```text
-Publico:
-GET /
-GET /api/v1/health
-GET /api/v1/health/db
-POST /api/v1/auth/login
-
-Cualquier usuario autenticado:
-GET categorias, productos, perfil olfativo, acordes, notas, clientes,
-inventario/movimientos, ventas, facturas
-GET /api/v1/auth/me
-POST /api/v1/auth/change-password
-
-ADMINISTRADOR o VENDEDOR:
-POST/PUT/PATCH clientes
-POST ventas
-POST ventas/{venta_id}/factura
-
-Solo ADMINISTRADOR:
-mutaciones de categorias, productos, perfil olfativo, acordes y notas
-DELETE clientes
-movimientos manuales de inventario
-anular ventas
-reportes
-usuarios
-```
-
-Los usernames se guardan en minusculas y son unicos sin diferenciar
-mayusculas/minusculas. El email es opcional; si existe, tambien se normaliza a
-minusculas y es unico case-insensitive. Las contrasenas se guardan solamente
-como hash Argon2.
-
-Las nuevas ventas API guardan `ventas.usuario_id` con el usuario autenticado.
-Los movimientos de inventario guardan `movimientos_inventario.usuario_id`. Las
-facturas nuevas guardan `facturas.usuario_id`. Al anular una venta se guarda
-`ventas.anulada_por_usuario_id`, se crean movimientos `ENTRADA` con el admin que
-anulo, y si existe factura tambien queda `facturas.anulada_por_usuario_id`.
-
-### Endpoints de categorias
+### Categorias
 
 ```text
 GET    /api/v1/categorias
-GET    /api/v1/categorias/{id}
+GET    /api/v1/categorias/{categoria_id}
 POST   /api/v1/categorias
-PUT    /api/v1/categorias/{id}
-PATCH  /api/v1/categorias/{id}
-DELETE /api/v1/categorias/{id}
+PUT    /api/v1/categorias/{categoria_id}
+PATCH  /api/v1/categorias/{categoria_id}
+DELETE /api/v1/categorias/{categoria_id}
 ```
 
-`DELETE` no borra fisicamente la categoria; la desactiva con `activo = false`.
-No se crean productos asociados a categorias inactivas.
-
-### Endpoints de productos
+### Productos
 
 ```text
 GET    /api/v1/productos
-GET    /api/v1/productos/{id}
+GET    /api/v1/productos/{producto_id}
 POST   /api/v1/productos
-PUT    /api/v1/productos/{id}
-PATCH  /api/v1/productos/{id}
-DELETE /api/v1/productos/{id}
+PUT    /api/v1/productos/{producto_id}
+PATCH  /api/v1/productos/{producto_id}
+DELETE /api/v1/productos/{producto_id}
 ```
 
-`DELETE` no borra fisicamente el producto; lo desactiva con `activo = false`.
-El precio y el costo se guardan como `Numeric/Decimal`, no como `float`.
-Durante la creacion de un producto se permite definir `stock_actual` inicial.
-Despues de creado, `stock_actual` no se modifica con `PUT` ni `PATCH`; cualquier
-cambio de existencia debe registrarse por Inventario para mantener historial.
-
-El listado de productos permite filtros:
+Filtros confirmados:
 
 ```text
-GET /api/v1/productos?buscar=invictus
-GET /api/v1/productos?marca=Rabanne
-GET /api/v1/productos?categoria_id=1
-GET /api/v1/productos?genero=Hombre
-GET /api/v1/productos?activo=true
-GET /api/v1/productos?stock_bajo=true
-GET /api/v1/productos?acorde=citrico
-GET /api/v1/productos?nota=toronja
-GET /api/v1/productos?nota=laurel&tipo_nota=CORAZON
-```
-
-La paginacion usa:
-
-```text
-GET /api/v1/productos?page=1&limit=20
-```
-
-`limit` acepta como maximo 100 registros por pagina.
-
-### Informacion olfativa
-
-La informacion olfativa vive en PostgreSQL. La aplicacion Tkinter todavia no
-incluye pantallas nuevas para acordes, notas o Fragella; esas capacidades siguen
-disponibles por FastAPI/Swagger.
-
-Los acordes y notas son catalogos normalizados con `nombre`, `slug`, `activo`,
-`created_at` y `updated_at`. El `slug` se genera sin acentos y en minusculas:
-`Citrico` y su variante con acento terminan como `citrico`. Los duplicados se
-protegen con indices case-insensitive en PostgreSQL.
-
-Endpoints de acordes:
-
-```text
-GET    /api/v1/acordes?buscar=citrico&activo=true&page=1&limit=20
-GET    /api/v1/acordes/{id}
-POST   /api/v1/acordes
-PATCH  /api/v1/acordes/{id}
-DELETE /api/v1/acordes/{id}
-```
-
-Endpoints de notas:
-
-```text
-GET    /api/v1/notas?buscar=toronja&activo=true&page=1&limit=20
-GET    /api/v1/notas/{id}
-POST   /api/v1/notas
-PATCH  /api/v1/notas/{id}
-DELETE /api/v1/notas/{id}
-```
-
-`DELETE` en acordes y notas hace soft delete con `activo = false`. Las lecturas
-pueden hacerlas usuarios autenticados; las mutaciones requieren
-`ADMINISTRADOR`.
-
-El perfil olfativo de un producto se maneja separado de la respuesta normal de
-productos:
-
-```text
-GET /api/v1/productos/{id}/perfil-olfativo
-PUT /api/v1/productos/{id}/perfil-olfativo
-```
-
-`GET` devuelve `producto_id`, una lista de `acordes` y las `notas` agrupadas en
-claves `salida`, `corazon` y `fondo`. `PUT` reemplaza el perfil completo en una
-sola transaccion. No permite productos inexistentes, productos inactivos para
-modificacion, acordes/notas inexistentes o inactivos, acordes repetidos ni la
-misma nota repetida dentro del mismo tipo. Las posiciones deben ser cero o
-positivas.
-
-Los campos especializados de perfumeria que ya existen en `productos` se
-reutilizan:
-
-```text
+buscar
+marca
+categoria_id
 genero
-anio_lanzamiento
-concentracion
-duracion
-estela
-external_provider
-external_id
-external_last_sync
+activo
+stock_bajo
+acorde
+nota
+tipo_nota
+page
+limit
 ```
 
-`duracion` representa longevity y `estela` representa sillage.
-
-### Proveedor externo
-
-La API queda preparada para un proveedor externo de informacion de perfumes con
-una abstraccion en `app/integrations/perfume_provider.py`. Incluye DTOs
-normalizados para fragancias, acordes y notas, y operaciones de busqueda,
-detalle y similares.
-
-`app/integrations/fragella_provider.py` contiene el stub `FragellaProvider`.
-Si `FRAGELLA_API_KEY` esta vacio, sus metodos lanzan
-`ProviderNotConfiguredError`. La API arranca igual y solo los endpoints del
-proveedor devuelven error controlado.
-
-### Integracion Fragella
-
-Fragella se consulta desde backend usando `httpx` y el header `x-api-key`. La
-API key debe guardarse solo en `.env`:
-
-```text
-PERFUME_PROVIDER=fragella
-FRAGELLA_API_KEY=...
-FRAGELLA_BASE_URL=https://api.fragella.com/api/v1
-FRAGELLA_TIMEOUT_SECONDS=10
-```
-
-Nunca se debe enviar la API key al frontend, Swagger, logs, respuestas JSON ni
-PostgreSQL. El timeout aplica a todas las llamadas externas. Hay como maximo
-dos reintentos adicionales solo para timeouts, errores de conexion y respuestas
-`500`, `502`, `503` o `504`. No se reintenta `400`, `401`, `403`, `404` ni
-`429`.
-
-Flujo recomendado:
-
-```text
-Producto local
-     |
-Buscar candidatos
-     |
-Administrador revisa
-     |
-Selecciona external_id
-     |
-Sincronizar
-     |
-PostgreSQL
-     |
-Acordes + Notas + Metadatos
-```
-
-Pasos de uso:
-
-1. Crear cuenta en Fragella.
-2. Obtener la API key.
-3. Guardarla en `.env` como `FRAGELLA_API_KEY`.
-4. No usar la key en frontend ni clientes publicos.
-5. Buscar candidatos desde el producto local.
-6. Revisar un candidato exacto.
-7. Elegir explicitamente el `external_id`.
-8. Sincronizar el producto.
-9. Consultar perfumes similares cuando haga falta.
-10. Revisar cuota con el endpoint de usage.
-
-Endpoints:
-
-```text
-GET  /api/v1/productos/{id}/proveedor/candidatos?limit=5
-GET  /api/v1/productos/{id}/proveedor/candidatos/{external_id}
-POST /api/v1/productos/{id}/sincronizar-proveedor
-GET  /api/v1/productos/{id}/similares?limit=5
-GET  /api/v1/integraciones/fragella/status
-GET  /api/v1/integraciones/fragella/usage
-```
-
-`candidatos`, `preview`, `sincronizar`, `status` y `usage` requieren
-`ADMINISTRADOR`. `similares` puede consultarlo cualquier usuario autenticado.
-
-La sincronizacion nunca modifica `sku`, `costo`, `precio`, `stock_actual`,
-`stock_minimo`, `categoria_id`, `activo`, `nombre` ni `marca`. Solo enriquece:
-
-```text
-genero
-anio_lanzamiento
-concentracion
-duracion
-estela
-external_provider
-external_id
-external_last_sync
-external_image_url
-external_transparent_image_url
-acordes
-notas
-```
-
-Si Fragella devuelve `None` para un metadato, se conserva el valor local
-existente. `ProductoORM.imagen` no se sobrescribe. Las imagenes externas se
-guardan separadas y no se descargan.
-
-El endpoint de candidatos no guarda nada y no autoelige `search[0]`; si nombre
-+ marca no devuelve resultados, hace una sola busqueda adicional solo por
-nombre. El preview tampoco persiste. La sincronizacion hace upsert de acordes y
-notas por slug normalizado, reactiva registros inactivos, reemplaza el perfil
-olfativo completo y guarda todo en una sola transaccion.
-
-### Endpoints de inventario
+### Inventario
 
 ```text
 POST /api/v1/inventario/entrada
@@ -676,259 +425,39 @@ POST /api/v1/inventario/salida
 POST /api/v1/inventario/ajuste
 
 GET  /api/v1/inventario/movimientos
-GET  /api/v1/inventario/movimientos/{id}
+GET  /api/v1/inventario/movimientos/{movimiento_id}
 ```
 
-Entrada suma unidades al `stock_actual` del producto:
-
-```json
-{
-  "producto_id": 1,
-  "cantidad": 10,
-  "motivo": "Compra de mercaderia"
-}
-```
-
-Salida resta unidades. Si la cantidad solicitada supera el stock disponible,
-la API responde `400 Bad Request` y no modifica el producto:
-
-```json
-{
-  "producto_id": 1,
-  "cantidad": 2,
-  "motivo": "Producto danado"
-}
-```
-
-Ajuste recibe el stock final deseado, no una diferencia. Si el stock actual ya
-es igual al valor solicitado, la operacion se rechaza para evitar movimientos
-sin cambio:
-
-```json
-{
-  "producto_id": 1,
-  "stock_nuevo": 15,
-  "motivo": "Conteo fisico"
-}
-```
-
-El historial se consulta con paginacion y filtros:
-
-```text
-GET /api/v1/inventario/movimientos?producto_id=1
-GET /api/v1/inventario/movimientos?tipo=ENTRADA
-GET /api/v1/inventario/movimientos?desde=2026-08-12T00:00:00Z
-GET /api/v1/inventario/movimientos?hasta=2026-08-12T23:59:59Z
-GET /api/v1/inventario/movimientos?page=1&limit=20
-```
-
-Los movimientos son historial de auditoria: no existen endpoints para editarlos
-o eliminarlos. Si hay un error de conteo, se corrige registrando un nuevo ajuste.
-Las operaciones de entrada, salida y ajuste bloquean la fila del producto con
-`SELECT ... FOR UPDATE` en PostgreSQL y actualizan producto + movimiento dentro
-de una sola transaccion.
-
-### Endpoints de clientes
+### Clientes
 
 ```text
 GET    /api/v1/clientes
-GET    /api/v1/clientes/{id}
+GET    /api/v1/clientes/{cliente_id}
 POST   /api/v1/clientes
-PUT    /api/v1/clientes/{id}
-PATCH  /api/v1/clientes/{id}
-DELETE /api/v1/clientes/{id}
+PUT    /api/v1/clientes/{cliente_id}
+PATCH  /api/v1/clientes/{cliente_id}
+DELETE /api/v1/clientes/{cliente_id}
 ```
 
-`DELETE` no borra fisicamente el cliente; lo desactiva con `activo = false`.
-
-Ejemplo de cliente completo:
-
-```json
-{
-  "nombre": "Juan Perez",
-  "correo": "juan@example.com",
-  "telefono": "9999-9999",
-  "direccion": "La Paz"
-}
-```
-
-Tambien se permite registrar clientes sin correo:
-
-```json
-{
-  "nombre": "Cliente mostrador",
-  "correo": null,
-  "telefono": null,
-  "direccion": null
-}
-```
-
-Cuando el correo viene informado, se valida, se normaliza a minusculas y debe
-ser unico sin diferenciar mayusculas/minusculas. Los clientes sin correo se
-guardan con `correo = NULL`, por lo que pueden existir varios.
-
-El listado de clientes permite:
-
-```text
-GET /api/v1/clientes?buscar=juan
-GET /api/v1/clientes?activo=true
-GET /api/v1/clientes?page=1&limit=20
-```
-
-`buscar` revisa nombre, correo y telefono. `limit` acepta como maximo 100
-registros por pagina.
-
-### Endpoints de ventas
+### Ventas
 
 ```text
 POST /api/v1/ventas
-
 GET  /api/v1/ventas
-GET  /api/v1/ventas/{id}
-
-POST /api/v1/ventas/{id}/anular
+GET  /api/v1/ventas/{venta_id}
+POST /api/v1/ventas/{venta_id}/anular
 ```
 
-Una venta se crea enviando solamente cliente opcional y productos. El servidor
-toma precios desde PostgreSQL, calcula subtotales/total, descuenta stock y crea
-movimientos de inventario `SALIDA`.
-
-```json
-{
-  "cliente_id": 1,
-  "productos": [
-    {
-      "producto_id": 10,
-      "cantidad": 2
-    },
-    {
-      "producto_id": 20,
-      "cantidad": 1
-    }
-  ]
-}
-```
-
-Para venta de mostrador se puede enviar `cliente_id = null` o no enviarlo. La
-venta queda con:
-
-```text
-cliente_id = NULL
-cliente_nombre = Cliente mostrador
-```
-
-Si el request trae productos repetidos, la API los agrupa antes de procesar la
-venta. Por ejemplo, dos lineas para el producto `5` con cantidades `2` y `3`
-se guardan como una linea de cantidad `5`.
-
-Los detalles guardan snapshots historicos de:
-
-```text
-producto_sku
-producto_nombre
-precio_unitario
-```
-
-Si despues cambia el producto, la venta historica conserva los datos originales.
-El frontend no puede enviar precio, subtotal, total, estado, stock ni usuario.
-
-El listado de ventas permite:
-
-```text
-GET /api/v1/ventas?cliente_id=1
-GET /api/v1/ventas?estado=COMPLETADA
-GET /api/v1/ventas?estado=ANULADA
-GET /api/v1/ventas?desde=2026-08-12T00:00:00Z
-GET /api/v1/ventas?hasta=2026-08-12T23:59:59Z
-GET /api/v1/ventas?page=1&limit=20
-```
-
-Para anular una venta:
-
-```json
-{
-  "motivo": "Cliente cancelo la compra"
-}
-```
-
-La anulacion bloquea la venta, valida que siga `COMPLETADA`, devuelve el stock
-con movimientos de inventario `ENTRADA`, guarda `anulada_at` y
-`motivo_anulacion`, y cambia el estado a `ANULADA`. Una venta anulada no puede
-anularse de nuevo.
-
-Crear o anular ventas es atomico: venta, detalles, cambios de stock y
-movimientos de inventario se hacen en una sola transaccion PostgreSQL. Si falla
-cualquier paso, se revierte todo. Para evitar carreras de stock, los productos
-se bloquean con `SELECT ... FOR UPDATE` en orden de `producto_id`.
-
-### Endpoints de facturas
+### Facturas
 
 ```text
 POST /api/v1/ventas/{venta_id}/factura
-
 GET  /api/v1/facturas
-GET  /api/v1/facturas/{id}
+GET  /api/v1/facturas/{factura_id}
 GET  /api/v1/facturas/numero/{numero}
 ```
 
-La factura se genera desde una venta existente. El frontend no envia numero,
-cliente, subtotal, total ni estado; la API toma esos valores desde la venta y
-guarda snapshots historicos.
-
-Ejemplo:
-
-```text
-POST /api/v1/ventas/15/factura
-```
-
-Una factura nueva nace como `EMITIDA`. La numeracion conserva el formato:
-
-```text
-FAC-000015
-```
-
-El numero se deriva del `venta_id`, por lo que no usa `MAX(numero)+1` y queda
-protegido por indices unicos junto con la regla de una factura por venta.
-
-Solo se facturan ventas `COMPLETADA`. Una venta `ANULADA` responde `409
-Conflict`, y una venta que ya tiene factura tambien responde `409 Conflict`.
-
-La factura conserva:
-
-```text
-cliente_nombre
-subtotal
-total
-```
-
-Los detalles mostrados salen de `detalle_ventas`, que ya guarda snapshots de
-producto, SKU, precio unitario, cantidad y subtotal. No se recalculan precios
-actuales de productos para representar facturas historicas.
-
-El listado de facturas permite:
-
-```text
-GET /api/v1/facturas?venta_id=15
-GET /api/v1/facturas?estado=EMITIDA
-GET /api/v1/facturas?estado=ANULADA
-GET /api/v1/facturas?buscar=FAC-000015
-GET /api/v1/facturas?buscar=Juan
-GET /api/v1/facturas?desde=2026-08-12T00:00:00Z
-GET /api/v1/facturas?hasta=2026-08-12T23:59:59Z
-GET /api/v1/facturas?page=1&limit=20
-```
-
-Si una venta facturada se anula, la misma transaccion devuelve stock, registra
-movimientos de inventario `ENTRADA`, marca la venta como `ANULADA` y marca su
-factura como `ANULADA`. La factura no se borra y conserva numero y detalles.
-No existen endpoints para editar, borrar, reactivar o generar PDF de facturas
-desde la API en esta fase.
-
-### Endpoints de reportes
-
-Los reportes son endpoints de solo lectura. No crean ventas, no modifican
-stock, no generan facturas y no escriben datos. Todos requieren rol
-`ADMINISTRADOR`.
+### Reportes
 
 ```text
 GET /api/v1/reportes/resumen
@@ -937,255 +466,404 @@ GET /api/v1/reportes/productos-mas-vendidos
 GET /api/v1/reportes/stock-bajo
 ```
 
-Los reportes financieros aceptan filtros de fecha ISO `YYYY-MM-DD`:
+## Permisos por rol
+
+| Accion | ADMINISTRADOR | VENDEDOR |
+| --- | --- | --- |
+| Login y `/auth/me` | Si | Si |
+| Lectura de categorias/productos/clientes/ventas/facturas/inventario | Si | Si |
+| Crear/editar clientes | Si | Si |
+| Crear ventas | Si | Si |
+| Emitir facturas | Si | Si |
+| Reportes | Si | No |
+| Usuarios | Si | No |
+| Mutar categorias/productos/acordes/notas/perfil olfativo | Si | No |
+| Movimientos manuales de inventario | Si | No |
+| Anular ventas | Si | No |
+| Fragella status, usage, candidatos, preview y sync | Si | No |
+| Consultar similares | Si | Si |
+
+## Configuracion de backend
+
+El backend lee configuracion desde variables de entorno y `.env` mediante
+`app/core/config.py`.
+
+Variables confirmadas:
 
 ```text
-GET /api/v1/reportes/resumen?desde=2026-08-01&hasta=2026-08-31
-GET /api/v1/reportes/ventas?desde=2026-08-01&hasta=2026-08-31&agrupar=dia
-GET /api/v1/reportes/ventas?desde=2026-01-01&hasta=2026-12-31&agrupar=mes
-GET /api/v1/reportes/productos-mas-vendidos?desde=2026-08-01&hasta=2026-08-31&limit=10
+APP_NAME
+APP_VERSION
+APP_ENV
+DATABASE_URL
+SECRET_KEY
+JWT_ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES
+CORS_ORIGINS
+CORS_ALLOW_CREDENTIALS
+ENABLE_DOCS
+LOG_LEVEL
+PERFUME_PROVIDER
+FRAGELLA_API_KEY
+FRAGELLA_BASE_URL
+FRAGELLA_TIMEOUT_SECONDS
 ```
 
-El dia `hasta` se incluye completo usando un limite superior exclusivo: por
-ejemplo, `hasta=2026-08-31` consulta registros con `created_at < 2026-09-01
-00:00:00`.
+Ejemplo seguro para desarrollo:
 
-Las ventas `ANULADA` no cuentan como ingresos, unidades vendidas, productos mas
-vendidos ni ventas exitosas. Solo aparecen en metricas separadas, como
-`ventas_anuladas`. Las facturas validas cuentan solamente si estan `EMITIDA`;
-las facturas `ANULADA` se reportan por separado.
-
-`GET /api/v1/reportes/resumen` devuelve metricas para dashboard:
-
-```json
-{
-  "periodo": {
-    "desde": "2026-08-01",
-    "hasta": "2026-08-31"
-  },
-  "ventas_completadas": 25,
-  "ventas_anuladas": 2,
-  "ingresos_totales": "12450.00",
-  "ticket_promedio": "498.00",
-  "unidades_vendidas": 56,
-  "facturas_emitidas": 20,
-  "facturas_anuladas": 1,
-  "productos_stock_bajo": 4
-}
-```
-
-`GET /api/v1/reportes/ventas` genera la tendencia para una futura grafica. El
-parametro `agrupar` acepta `dia` o `mes`, y los periodos salen en orden
-cronologico ascendente.
-
-`GET /api/v1/reportes/productos-mas-vendidos` usa `detalle_ventas.cantidad` y
-`detalle_ventas.subtotal`, por lo que respeta precios, SKU y nombres historicos
-guardados al momento de vender. No recalcula ingresos con el precio actual del
-producto. `limit` acepta valores de 1 a 100.
-
-`GET /api/v1/reportes/stock-bajo?page=1&limit=20` lista productos activos con
-`stock_actual <= stock_minimo`. Este reporte representa el inventario actual y
-no depende del rango historico de fechas. El campo `faltante_minimo` se calcula
-como `max(stock_minimo - stock_actual, 0)` y se ordenan primero los productos
-con mayor deficit.
-
-## Migracion de datos legado JSON
-
-La migracion JSON -> PostgreSQL es una herramienta puntual para pasar datos
-historicos a la base activa. Despues de la migracion, la aplicacion de
-escritorio usa REST API y PostgreSQL; JSON queda como legado/backup, no como
-fuente activa ni como fallback automatico.
-
-La ruta legacy por defecto es:
-
-```text
-database/json
-```
-
-Esa ruta sale de `app/database/json_storage.py` usando
-`Path(__file__).resolve().parents[2] / "database" / "json"`. En codigo fuente
-apunta a la raiz del repo. En builds antiguos de PyInstaller one-dir podia
-apuntar a `dist/PerfumLab/_internal/database/json`; desde la preparacion de
-produccion FASE 13, `PerfumLab.spec` ya no empaqueta `database/json/*.json`.
-
-Para auditar sin escribir nada:
-
-```powershell
-uv run python scripts/audit_legacy_data.py
-```
-
-Para auditar otra carpeta JSON:
-
-```powershell
-uv run python scripts/audit_legacy_data.py --source C:\ruta\a\database\json
-```
-
-Para simular la migracion sin escribir en PostgreSQL:
-
-```powershell
-uv run python scripts/migrate_json_to_postgres.py --dry-run
-```
-
-Para aplicar la migracion real:
-
-```powershell
-uv run python scripts/migrate_json_to_postgres.py --apply
-```
-
-Antes de aplicar, el script copia los JSON originales en
-`backups/legacy-json-YYYYMMDD-HHMMSS/` y valida SHA256 contra la fuente. Tambien
-exige `pg_dump` y crea
-`backups/postgres-before-json-migration-YYYYMMDD-HHMMSS.dump`. Si `pg_dump` no
-esta disponible o falla, la migracion real se detiene antes de escribir.
-
-El modo `--dry-run` genera un reporte en
-`migration_reports/dry-run-YYYYMMDD-HHMMSS.json`. El modo `--apply` genera
-`migration_reports/apply-YYYYMMDD-HHMMSS.json`. Esos reportes no incluyen
-secretos.
-
-La migracion aplica todo en una sola transaccion y no ejecuta `TRUNCATE`, `DROP`
-ni borrados masivos. Si hay problemas `CRITICAL`, conflictos con datos ya
-existentes en PostgreSQL o errores de constraints, se hace rollback completo.
-
-Reglas principales:
-
-- Se preservan IDs legacy de categorias, clientes, productos, ventas, detalles,
-  movimientos y facturas cuando no hay colisiones.
-- Los usuarios legacy se auditan, pero no se migran automaticamente ni se copian
-  passwords.
-- Los campos `usuario_id` historicos se migran como `NULL` salvo que exista una
-  correspondencia verificable.
-- Los correos vacios de clientes se migran como `NULL`; correos no vacios deben
-  ser unicos ignorando mayusculas/minusculas.
-- Los metadatos Fragella, acordes y notas no se inventan ni se migran desde JSON.
-- Los movimientos de inventario se insertan como historial. No se reaplican con
-  `StockService`; `productos.stock_actual` viene del JSON de productos.
-
-## Notas sobre carpetas generadas
-
-Las carpetas `dist`, `dist_actualizado`, `build` y `build_actualizado` son
-generadas por PyInstaller y normalmente no se suben al repositorio.
-
-Cada computadora puede generar su propio ejecutable siguiendo los pasos de este
-README.
-
-## Produccion FASE 13
-
-La arquitectura de produccion soportada es:
-
-```text
-PerfumLab.exe -> HTTPS -> FastAPI -> PostgreSQL
-                          |
-                          v
-                       Fragella
-```
-
-El desktop no inicia Uvicorn, no conecta a PostgreSQL y no contiene secretos del
-backend. Solo necesita una URL publica de API:
-
-```text
-PERFUMLAB_API_URL=https://api.<dominio>
-```
-
-No uses una URL real en el codigo hasta que el dominio exista. En desarrollo se
-permite `http://127.0.0.1:8000`; en `production` el build desktop exige
-`https://` y rechaza localhost.
-
-### Variables de backend
-
-En el servidor configura los secretos por variables de entorno o por el gestor
-seguro del proveedor:
-
-```text
-APP_ENV=production
-DATABASE_URL=postgresql+psycopg://...
-SECRET_KEY=...
+```env
+APP_NAME=Perfum Lab API
+APP_VERSION=1.0.0
+APP_ENV=development
+DATABASE_URL=postgresql+psycopg://USER:PASSWORD@HOST/DATABASE
+SECRET_KEY=CHANGE_ME_IN_LOCAL_DEVELOPMENT
 JWT_ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=60
-CORS_ORIGINS=https://app.<dominio>
+CORS_ORIGINS=http://localhost:3000,http://localhost:5173
 CORS_ALLOW_CREDENTIALS=true
-ENABLE_DOCS=false
+ENABLE_DOCS=true
 LOG_LEVEL=INFO
+
 PERFUME_PROVIDER=fragella
-FRAGELLA_API_KEY=...
+FRAGELLA_API_KEY=YOUR_FRAGELLA_API_KEY
 FRAGELLA_BASE_URL=https://api.fragella.com/api/v1
 FRAGELLA_TIMEOUT_SECONDS=10
 ```
 
-`SECRET_KEY` se valida en `production`: no se aceptan placeholders como
-`change_this_secret_key`, `secret`, `password`, `test` o `placeholder`, ni
-valores cortos. `DATABASE_URL` debe ser PostgreSQL en produccion; SQLite queda
-solo para pruebas/desarrollo cuando aplique.
+Reglas de produccion confirmadas:
 
-### Backend
+- `APP_ENV=production` exige `DATABASE_URL`.
+- `DATABASE_URL` debe usar PostgreSQL.
+- `SECRET_KEY` debe ser fuerte, no placeholder y tener longitud suficiente.
+- Si `CORS_ALLOW_CREDENTIALS=true`, `CORS_ORIGINS` no puede incluir `*`.
+- `ENABLE_DOCS=false` deshabilita `/docs`, `/redoc` y `/openapi.json`.
+- Los secretos deben gestionarse como variables de entorno del proveedor de
+  despliegue, nunca hardcodeados ni versionados.
 
-Antes de levantar una version nueva:
+## Configuracion del escritorio
+
+La aplicacion de escritorio usa `app/desktop_config.py` y admite configuracion
+por archivo `perfumlab_desktop.json` o variables de entorno:
+
+```text
+PERFUMLAB_DESKTOP_MODE
+PERFUMLAB_API_URL
+PERFUMLAB_API_TIMEOUT_SECONDS
+```
+
+Ejemplo para desarrollo:
+
+```env
+PERFUMLAB_DESKTOP_MODE=development
+PERFUMLAB_API_URL=http://127.0.0.1:8000
+PERFUMLAB_API_TIMEOUT_SECONDS=10
+```
+
+Ejemplo seguro para produccion, colocado junto a `PerfumLab.exe`:
+
+```json
+{
+  "api_url": "https://perfumlab-system.vercel.app",
+  "timeout_seconds": 15,
+  "mode": "production",
+  "app_name": "Perfum Lab",
+  "version": "1.0.0"
+}
+```
+
+En `production`, `validate_desktop_api_url()` exige `https://` y rechaza
+localhost (`localhost`, `127.0.0.1`, `::1`). El EXE no debe recibir
+`DATABASE_URL`, `SECRET_KEY`, passwords de PostgreSQL ni `FRAGELLA_API_KEY`.
+
+## Instalacion local
+
+Requisitos:
+
+- Python
+- Git
+- PostgreSQL accesible por `DATABASE_URL`
+- `uv` opcional, recomendado para ejecutar los comandos documentados
+
+Clonar el repositorio:
+
+```powershell
+cd C:\Users\TU_USUARIO\OneDrive\Escritorio
+git clone https://github.com/raphaelalvarenga-ui/perfumlab-system.git
+cd perfumlab-system
+```
+
+Crear entorno e instalar dependencias desde `requirements.txt`:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+Configurar `.env` usando `.env.example` como plantilla, sin copiar secretos
+reales al repositorio.
+
+Crear o apuntar a una base PostgreSQL y aplicar migraciones:
 
 ```powershell
 uv run alembic upgrade head
 ```
 
-Arranque de desarrollo:
+Crear el primer administrador:
+
+```powershell
+uv run python scripts/create_admin.py
+```
+
+Levantar FastAPI en desarrollo:
 
 ```powershell
 uv run uvicorn app.main_api:app --reload
 ```
 
-Arranque de produccion, sin `--reload`:
+Ejecutar Tkinter en otra terminal:
 
 ```powershell
-uv run uvicorn app.main_api:app --host 0.0.0.0 --port 8000
+uv run python -m app.main
 ```
 
-Tambien existe `Dockerfile` para correr FastAPI en container. La imagen no
-incluye `.env`, `.git`, backups, `dist`, `build`, tests ni `database/json`.
-PostgreSQL debe ser externo/administrado; no se instala dentro de la imagen.
-
-### HTTPS y proxy
-
-Publica la API detras de un reverse proxy HTTPS como Caddy, Nginx o la capa TLS
-del proveedor cloud. El firewall debe exponer solo `443` hacia la API. PostgreSQL
-`5432` debe quedar privado o restringido para que solo el backend pueda
-conectarse.
-
-Si usas el `Dockerfile`, `uvicorn` corre con `--proxy-headers` y
-`FORWARDED_ALLOW_IPS` configurable. No uses `*` salvo que el entorno de red sea
-controlado y entendido.
-
-### Health y docs
-
-Endpoints esperados:
+Al iniciar, Tkinter comprueba:
 
 ```text
-GET /
 GET /api/v1/health
 GET /api/v1/health/db
 ```
 
-`/api/v1/health` no requiere DB. `/api/v1/health/db` ejecuta una comprobacion
-simple contra PostgreSQL sin revelar credenciales.
+Si la API o PostgreSQL no estan disponibles, muestra un mensaje claro y no abre
+los modulos empresariales.
 
-`ENABLE_DOCS=true` deja disponibles `/docs`, `/redoc` y `/openapi.json`.
-`ENABLE_DOCS=false` los deshabilita sin afectar la API.
+## Produccion en Vercel y Neon
 
-### Backup y restore
+El backend esta desplegado en Vercel:
 
-Backup seguro con `pg_dump`:
+```text
+https://perfumlab-system.vercel.app
+```
+
+La entrada compatible con Vercel es:
+
+```python
+from app.main_api import app
+```
+
+en `app/index.py`.
+
+Endpoints publicos verificados el `2026-08-19`:
+
+```text
+GET https://perfumlab-system.vercel.app/
+GET https://perfumlab-system.vercel.app/api/v1/health
+GET https://perfumlab-system.vercel.app/api/v1/health/db
+```
+
+Resultados observados:
+
+- API: `{"status":"running"}` en `/`.
+- Health: `{"status":"ok"}`.
+- PostgreSQL: `{"status":"ok","database":"connected"}`.
+- `/docs` y `/openapi.json`: `404`, coherente con docs deshabilitadas por
+  `ENABLE_DOCS=false` en produccion.
+
+La base de datos de produccion esta alojada en Neon PostgreSQL. Solo debe
+documentarse que `DATABASE_URL` apunta a PostgreSQL; no se deben publicar
+hostnames privados, usuarios, passwords ni connection strings reales.
+
+## Migraciones
+
+Alembic toma `DATABASE_URL` desde la configuracion de la aplicacion. El head
+actual del repositorio es `20260812_0008`.
+
+| Revision | Contenido principal |
+| --- | --- |
+| `20260810_0001` | Categorias y productos, incluyendo campos base de perfumeria |
+| `20260811_0002` | Clientes |
+| `20260812_0003` | Movimientos de inventario y enum `tipo_movimiento_inventario` |
+| `20260812_0004` | Ventas, detalle de ventas y enum `estado_venta` |
+| `20260812_0005` | Facturas y enum `estado_factura` |
+| `20260812_0006` | Usuarios, roles, auth y auditoria en ventas, inventario y facturas |
+| `20260812_0007` | Acordes, notas, relaciones con productos y enums olfativos |
+| `20260812_0008` | URLs externas de imagen y unicidad `external_provider + external_id` |
+
+Aplicar migraciones:
+
+```powershell
+uv run alembic upgrade head
+```
+
+Revertir una migracion en entorno controlado:
+
+```powershell
+uv run alembic downgrade -1
+```
+
+Las migraciones no se ejecutan desde requests HTTP ni desde el EXE.
+
+## Migracion desde JSON legacy
+
+La migracion JSON a PostgreSQL es una herramienta puntual para trasladar datos
+historicos. Despues de migrar, la aplicacion de escritorio debe operar contra
+REST API y PostgreSQL.
+
+Auditar sin escribir:
+
+```powershell
+uv run python scripts/audit_legacy_data.py
+```
+
+Simular migracion:
+
+```powershell
+uv run python scripts/migrate_json_to_postgres.py --dry-run
+```
+
+Aplicar migracion real:
+
+```powershell
+uv run python scripts/migrate_json_to_postgres.py --apply
+```
+
+La migracion real crea backups de JSON y PostgreSQL, valida conflictos, preserva
+IDs legacy cuando es seguro y aplica los cambios en una sola transaccion. Los
+usuarios legacy se auditan, pero no se migran passwords.
+
+## Build del EXE
+
+El proyecto usa PyInstaller con `PerfumLab.spec`. La configuracion es `onedir`,
+por lo que el resultado esperado es una carpeta completa:
+
+```text
+dist/PerfumLab/PerfumLab.exe
+```
+
+Comando validado con el `.spec`:
+
+```powershell
+uv run pyinstaller PerfumLab.spec --clean --noconfirm
+```
+
+Comando recomendado para generar tambien `perfumlab_desktop.json`:
+
+```powershell
+uv run python scripts/build_desktop.py --mode production --api-url https://perfumlab-system.vercel.app
+```
+
+Salida esperada del script:
+
+```text
+dist/PerfumLab/PerfumLab.exe
+dist/PerfumLab/perfumlab_desktop.json
+```
+
+Para entregar el escritorio, se debe copiar la carpeta completa
+`dist/PerfumLab`, no solo el `.exe`, porque PyInstaller en modo `onedir` genera
+archivos internos y recursos que el ejecutable necesita.
+
+`PerfumLab.spec` incluye assets de logo, pero no empaqueta `.env`, scripts
+administrativos, Alembic ni `database/json/*.json` como datos de produccion.
+
+Smoke opcional del EXE:
+
+```powershell
+uv run python scripts/smoke_desktop_exe.py --api-url https://perfumlab-system.vercel.app
+```
+
+## Tests
+
+La suite de pruebas cubre API, cliente REST, integraciones, migracion legacy,
+configuracion de produccion y flujos QA de escritorio/legacy.
+
+Comando:
+
+```powershell
+uv run pytest
+```
+
+Cobertura funcional incluida:
+
+- Health y root.
+- Auth, JWT, permisos, usuarios y auditoria.
+- Categorias.
+- Productos.
+- Inventario.
+- Clientes.
+- Ventas.
+- Facturas.
+- Reportes.
+- Acordes.
+- Notas.
+- Perfil olfativo.
+- Integracion de proveedor de perfumes.
+- FragellaProvider.
+- API client usado por Tkinter.
+- Configuracion desktop.
+- Migracion JSON a PostgreSQL.
+- Validaciones de produccion.
+- QA core, exportacion CSV/PDF y Excel.
+
+El ultimo resultado documentado para la suite completa fue:
+
+```text
+185 passed, 1 warning
+```
+
+El warning corresponde a una deprecacion de `TestClient`/`httpx` en el entorno
+de pruebas y no se considera un error funcional.
+
+## Validacion end-to-end realizada
+
+Se realizaron pruebas funcionales y end-to-end sobre el sistema desplegado y el
+EXE. No significa que todos los casos posibles del universo esten cubiertos,
+pero si valida los flujos principales:
+
+- Login de administrador desde el EXE.
+- Categorias.
+- Creacion y consulta de productos.
+- Inventario: entrada, salida y movimientos.
+- Clientes.
+- Venta.
+- Descuento de stock.
+- Facturacion.
+- Generacion de PDF desde escritorio.
+- Reportes.
+- API health.
+- Conexion a PostgreSQL.
+- Fragella status.
+- Fragella usage.
+- Busqueda de candidatos.
+- Sincronizacion real de una fragancia.
+- Persistencia de acordes y notas.
+- Consulta del perfil olfativo desde PostgreSQL.
+- Visualizacion de acordes y notas en la aplicacion de escritorio.
+
+La sincronizacion real se valido con el producto de prueba `Invictus Legend` de
+`Paco Rabanne` y el external ID
+`invictus-legend-paco-rabanne-for-men`. La respuesta de sincronizacion indico
+metadatos actualizados, 10 acordes y 8 notas. Ese perfume fue un dato de prueba
+para validar la integracion, no informacion hardcodeada del sistema.
+
+## Backup y operacion
+
+Backup PostgreSQL:
 
 ```powershell
 uv run python scripts/backup_postgres.py
 ```
 
-El script lee `DATABASE_URL`, no imprime passwords y deja el backup en
-`backups/postgres-backup-YYYYMMDD-HHMMSS.dump`.
+El script lee `DATABASE_URL`, usa `pg_dump`, no imprime passwords y genera
+backups bajo `backups/`.
 
-Restore manual, en un entorno controlado:
+Restore manual en entorno controlado:
 
 ```powershell
 pg_restore --clean --if-exists --dbname "<DATABASE_URL_DESTINO>" backups\archivo.dump
 ```
 
-Para backup plano:
+Para backup SQL plano:
 
 ```powershell
 uv run python scripts/backup_postgres.py --format plain
@@ -1194,43 +872,42 @@ psql "<DATABASE_URL_DESTINO>" -f backups\archivo.sql
 
 No hay restore automatico desde la aplicacion.
 
-### Build desktop
+## Estado actual y pendientes conocidos
 
-Build local/desarrollo:
+- Produccion usa Vercel + Neon y health/db responde correctamente.
+- La documentacion interactiva puede estar deshabilitada en produccion con
+  `ENABLE_DOCS=false`.
+- El EXE consume la API REST y no debe conectarse directo a Fragella.
+- El perfil olfativo en el EXE es lectura desde PostgreSQL.
+- Las llamadas a Fragella dependen de la cuota y disponibilidad del proveedor.
+- La consulta de similares existe en backend, pero puede verse limitada por
+  rate limit o cuota del plan externo.
+- No hay auto-update ni instalador final documentado; el entregable actual es
+  la carpeta `dist/PerfumLab` generada por PyInstaller.
+- JSON queda como legado, pruebas y migracion, no como fuente activa de
+  produccion.
 
-```powershell
-uv run python scripts/build_desktop.py --mode development --api-url http://127.0.0.1:8000
-```
-
-Build produccion:
-
-```powershell
-uv run python scripts/build_desktop.py --mode production --api-url https://api.<dominio>
-```
-
-Salida esperada:
-
-```text
-dist/PerfumLab/PerfumLab.exe
-dist/PerfumLab/perfumlab_desktop.json
-```
-
-`perfumlab_desktop.json` contiene solo datos no sensibles: modo, API URL,
-timeout, nombre y version. El `.spec` incluye assets e icono, pero no `.env`,
-scripts administrativos, Alembic ni `database/json/*.json` como datos.
-
-Smoke real del ejecutable, con API local o desplegada:
+## Comandos rapidos
 
 ```powershell
-uv run python scripts/smoke_desktop_exe.py --api-url http://127.0.0.1:8000
+# Instalar dependencias
+python -m pip install -r requirements.txt
+
+# Migrar base
+uv run alembic upgrade head
+
+# Crear admin
+uv run python scripts/create_admin.py
+
+# API local
+uv run uvicorn app.main_api:app --reload
+
+# Desktop local
+uv run python -m app.main
+
+# Tests
+uv run pytest
+
+# EXE
+uv run python scripts/build_desktop.py --mode production --api-url https://perfumlab-system.vercel.app
 ```
-
-Ese runner crea usuarios temporales `TEST-PACK-*`, ejecuta el EXE real en modo
-smoke, valida login admin/vendedor, productos, clientes, inventario, venta,
-factura, reportes, permisos, logout y luego limpia los datos temporales.
-
-### Installer
-
-No se implementa auto-update en esta fase. Si Inno Setup o NSIS ya estan
-disponibles, se puede crear un instalador en una fase posterior, pero no debe
-instalar PostgreSQL ni pedir passwords de base de datos al usuario final.
