@@ -11,7 +11,12 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.api_client import get_api_client, reset_api_client
+from app.api_client import (
+    ApiAuthenticationError,
+    ApiError,
+    get_api_client,
+    reset_api_client,
+)
 from app.api_client.session import get_user_session
 from app.desktop_config import get_desktop_config
 from app.desktop_logging import configure_desktop_logging
@@ -136,6 +141,24 @@ class PerfumLabApp:
                 ("abrir_reportes", "mostrar_reportes", "main"),
             ),
         )
+
+    def probar_fragella(self):
+        try:
+            usage = self.api.integraciones.fragella_usage()
+        except ApiAuthenticationError:
+            return
+        except ApiError as error:
+            messagebox.showerror("Fragella", str(error))
+            return
+        except Exception as error:
+            logger.exception("fragella_test_failed error_type=%s", type(error).__name__)
+            messagebox.showerror(
+                "Fragella",
+                "No se pudo probar la integracion Fragella.",
+            )
+            return
+
+        messagebox.showinfo("Fragella", formatear_fragella_usage(usage))
 
     def _mostrar_modulo(self, titulo, renderizar):
         self.titulo_var.set(titulo)
@@ -264,20 +287,35 @@ def crear_menu_principal(root, app):
     ]
 
     if get_user_session().is_admin:
-        botones.append(
-            (
-                "Reportes",
-                "Resumen operativo y exportacion CSV.",
-                app.mostrar_reportes,
-                "Primary.TButton",
-            )
+        botones.extend(
+            [
+                (
+                    "Reportes",
+                    "Resumen operativo y exportacion CSV.",
+                    app.mostrar_reportes,
+                    "Primary.TButton",
+                    "Abrir",
+                ),
+                (
+                    "Fragella",
+                    "Prueba EXE -> API REST -> Fragella.",
+                    app.probar_fragella,
+                    "Accent.TButton",
+                    "Probar Fragella",
+                ),
+            ]
         )
 
     modulos = ttk.Frame(contenedor, style="Surface.TFrame", padding=(18, 12))
     modulos.grid(row=1, column=0, sticky="nsew")
     modulos.columnconfigure(0, weight=1)
 
-    for indice, (texto, descripcion, comando, estilo) in enumerate(botones):
+    for indice, boton in enumerate(botones):
+        if len(boton) == 4:
+            texto, descripcion, comando, estilo = boton
+            etiqueta_boton = "Abrir"
+        else:
+            texto, descripcion, comando, estilo, etiqueta_boton = boton
         fila = ttk.Frame(modulos, style="Surface.TFrame", padding=(0, 10))
         fila.grid(
             row=indice,
@@ -298,7 +336,7 @@ def crear_menu_principal(root, app):
             style="CardText.TLabel",
             wraplength=420,
         ).grid(row=1, column=0, sticky=tk.W, pady=(2, 0))
-        ttk.Button(fila, text="Abrir", command=comando, style=estilo).grid(
+        ttk.Button(fila, text=etiqueta_boton, command=comando, style=estilo).grid(
             row=0,
             column=1,
             rowspan=2,
@@ -306,6 +344,27 @@ def crear_menu_principal(root, app):
             padx=(18, 0),
             ipadx=12,
         )
+
+
+def formatear_fragella_usage(data):
+    if not isinstance(data, dict):
+        data = {}
+
+    return "\n".join(
+        [
+            "Integracion Fragella funcionando",
+            "",
+            f"Plan: {_valor_fragella(data.get('plan'))}",
+            f"Solicitudes usadas: {_valor_fragella(data.get('requests_made'))}",
+            f"Solicitudes restantes: {_valor_fragella(data.get('requests_remaining'))}",
+        ]
+    )
+
+
+def _valor_fragella(value):
+    if value is None:
+        return "No disponible"
+    return str(value)
 
 
 def main():

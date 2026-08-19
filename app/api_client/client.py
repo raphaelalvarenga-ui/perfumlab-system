@@ -55,6 +55,7 @@ class ApiClient:
         from app.api_client.clientes import ClientesApi
         from app.api_client.facturas import FacturasApi
         from app.api_client.inventario import InventarioApi
+        from app.api_client.integraciones import IntegracionesApi
         from app.api_client.productos import ProductosApi
         from app.api_client.reportes import ReportesApi
         from app.api_client.ventas import VentasApi
@@ -64,6 +65,7 @@ class ApiClient:
         self.productos = ProductosApi(self)
         self.clientes = ClientesApi(self)
         self.inventario = InventarioApi(self)
+        self.integraciones = IntegracionesApi(self)
         self.ventas = VentasApi(self)
         self.facturas = FacturasApi(self)
         self.reportes = ReportesApi(self)
