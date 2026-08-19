@@ -108,21 +108,40 @@ class FragellaProvider:
 
     def get_usage(self) -> dict:
         payload = self._get("/usage")
+
         if isinstance(payload, dict) and isinstance(payload.get("data"), dict):
             payload = payload["data"]
+
         if not isinstance(payload, dict):
             raise ProviderInvalidResponseError("Respuesta de uso invalida.")
+
+        usage = payload.get("usage")
+        if not isinstance(usage, dict):
+            usage = payload
+
+        requests_made = usage.get("requests_made")
+        if requests_made is None:
+            requests_made = usage.get("requestsMade")
+        if requests_made is None:
+            requests_made = usage.get("Requests Made")
+
+        requests_remaining = usage.get("requests_remaining")
+        if requests_remaining is None:
+            requests_remaining = usage.get("requestsRemaining")
+        if requests_remaining is None:
+            requests_remaining = usage.get("Requests Remaining")
+
+        billing_period = payload.get("billing_period")
+        if billing_period is None:
+            billing_period = payload.get("billingPeriod")
+        if billing_period is None:
+            billing_period = payload.get("Billing Period")
+
         return {
             "plan": payload.get("plan") or payload.get("Plan"),
-            "requests_made": payload.get("requests_made")
-            or payload.get("requestsMade")
-            or payload.get("Requests Made"),
-            "requests_remaining": payload.get("requests_remaining")
-            or payload.get("requestsRemaining")
-            or payload.get("Requests Remaining"),
-            "billing_period": payload.get("billing_period")
-            or payload.get("billingPeriod")
-            or payload.get("Billing Period"),
+            "requests_made": requests_made,
+            "requests_remaining": requests_remaining,
+            "billing_period": billing_period,
         }
 
     def _get(self, path: str, *, params: dict[str, Any] | None = None) -> Any:
