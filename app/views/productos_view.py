@@ -35,6 +35,7 @@ class ProductosView(ttk.Frame):
         self.estado_var = tk.StringVar(value="Listo.")
         self.filtrar_movimientos_var = tk.BooleanVar(value=False)
         self.descripcion_text = None
+        self.perfil_olfativo_text = None
         self.stock_entry = None
         self.categoria_combo = None
 
@@ -419,10 +420,42 @@ class ProductosView(ttk.Frame):
             highlightcolor=COLORS["primary"],
         )
         self.descripcion_text.grid(row=10, column=1, sticky="ew", pady=3)
+        ttk.Label(
+            contenedor,
+            text="Perfil olfativo",
+            style="Section.TLabel",
+        ).grid(
+            row=11,
+            column=0,
+            columnspan=2,
+            sticky=tk.W,
+            pady=(14, 6),
+        )
+
+        self.perfil_olfativo_text = tk.Text(
+            contenedor,
+            height=10,
+            width=30,
+            wrap=tk.WORD,
+            bg="#ffffff",
+            fg=COLORS["text"],
+            relief=tk.SOLID,
+            borderwidth=1,
+            highlightthickness=1,
+            highlightbackground=COLORS["border"],
+            state=tk.DISABLED,
+        )
+        self.perfil_olfativo_text.grid(
+            row=12,
+            column=0,
+            columnspan=2,
+            sticky="ew",
+            pady=(0, 6),
+        )
 
     def _crear_botones(self, contenedor):
         botones_frame = ttk.Frame(contenedor)
-        botones_frame.grid(row=11, column=0, columnspan=2, sticky="ew", pady=(14, 0))
+        botones_frame.grid(row=13, column=0, columnspan=2, sticky="ew", pady=(14, 0))
         botones_frame.columnconfigure(0, weight=1)
 
         guardar_btn = ttk.Button(
@@ -798,11 +831,80 @@ class ProductosView(ttk.Frame):
         self.stock_minimo_var.set(str(producto.stock_minimo))
         self.descripcion_text.delete("1.0", tk.END)
         self.descripcion_text.insert("1.0", producto.descripcion)
+        self._cargar_perfil_olfativo(producto.id)
         if self.stock_entry is not None:
             self.stock_entry.state(["disabled"])
         if self.filtrar_movimientos_var.get():
             self.cargar_movimientos()
+    def _cargar_perfil_olfativo(self, producto_id):
+        if self.perfil_olfativo_text is None:
+            return
 
+        self.perfil_olfativo_text.configure(state=tk.NORMAL)
+        self.perfil_olfativo_text.delete("1.0", tk.END)
+
+        try:
+            perfil = self.productos_controller.obtener_perfil_olfativo(producto_id)
+
+            acordes = perfil.get("acordes") or []
+            notas = perfil.get("notas") or {}
+
+            notas_salida = notas.get("salida") or []
+            notas_corazon = notas.get("corazon") or []
+            notas_fondo = notas.get("fondo") or []
+
+            lineas = []
+
+            lineas.append("ACORDES PRINCIPALES")
+            if acordes:
+                for acorde in acordes:
+                    nombre = acorde.get("nombre", "Sin nombre")
+                    intensidad = acorde.get("intensidad")
+
+                    if intensidad is not None:
+                        lineas.append(f"- {nombre} ({intensidad})")
+                    else:
+                        lineas.append(f"- {nombre}")
+            else:
+                lineas.append("- Sin acordes registrados")
+
+            lineas.append("")
+            lineas.append("NOTAS DE SALIDA")
+            if notas_salida:
+                for nota in notas_salida:
+                    lineas.append(f"- {nota.get('nombre', 'Sin nombre')}")
+            else:
+                lineas.append("- Sin notas registradas")
+
+            lineas.append("")
+            lineas.append("NOTAS DE CORAZON")
+            if notas_corazon:
+                for nota in notas_corazon:
+                    lineas.append(f"- {nota.get('nombre', 'Sin nombre')}")
+            else:
+                lineas.append("- Sin notas registradas")
+
+            lineas.append("")
+            lineas.append("NOTAS DE FONDO")
+            if notas_fondo:
+                for nota in notas_fondo:
+                    lineas.append(f"- {nota.get('nombre', 'Sin nombre')}")
+            else:
+                lineas.append("- Sin notas registradas")
+
+            self.perfil_olfativo_text.insert(
+                "1.0",
+                "\n".join(lineas),
+            )
+
+        except Exception as error:
+            self.perfil_olfativo_text.insert(
+                "1.0",
+                f"No se pudo cargar el perfil olfativo.\n\n{error}",
+            )
+
+        finally:
+            self.perfil_olfativo_text.configure(state=tk.DISABLED)
     def _leer_producto_desde_formulario(self):
         stock_actual = self._convertir_entero(self.stock_var.get(), "El stock actual")
 

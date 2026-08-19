@@ -37,6 +37,12 @@ class ProductosApi:
     def obtener(self, producto_id: int) -> dict:
         return self.api.request("GET", f"/api/v1/productos/{producto_id}")
 
+    def obtener_perfil_olfativo(self, producto_id: int) -> dict:
+        return self.api.request(
+            "GET",
+            f"/api/v1/productos/{producto_id}/perfil-olfativo",
+        )
+
     def crear(self, data: dict) -> dict:
         return self.api.request("POST", "/api/v1/productos", json=data)
 

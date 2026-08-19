@@ -120,6 +120,14 @@ class ProductosController:
         producto = buscar_por_id(productos, producto_id)
         return Producto.desde_fila(producto) if producto else None
 
+    def obtener_perfil_olfativo(self, producto_id):
+        if not self._usar_json:
+            return self.api.productos.obtener_perfil_olfativo(producto_id)
+
+        raise ValueError(
+            "El perfil olfativo solo esta disponible mediante la API REST."
+        )
+
     def listar_productos(self, incluir_inactivos=False):
         if not self._usar_json:
             productos = self.api.productos.listar_todos(
